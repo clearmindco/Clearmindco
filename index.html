@@ -1980,7 +1980,6 @@ function saveCalEntry(){
 
 // ─── BOOTSTRAP — runs after DOM is ready ───
 function runApp(){
-  try{
   try{loadDarkPref();}catch(e){}
   try{
     var hasData=loadData();
@@ -1999,7 +1998,7 @@ function runApp(){
   }
   // Show setup fresh — make sure step 0 is visible
   var s=document.getElementById('s0');if(s)s.classList.add('on');
-  }catch(e){console.warn('CMC startup:',e);try{document.getElementById('setup').style.display='flex';}catch(e2){}}
+  }catch(e){console.warn('CMC startup:',e);}
 }
 // Run when DOM is ready
 if(document.readyState==='loading'){
