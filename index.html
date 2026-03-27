@@ -517,7 +517,7 @@ margin:4px;transition:all .15s;cursor:default;
       <div style="font-size:12px;color:var(--text);line-height:1.4;"><strong style="color:var(--dark)">A coach in your corner</strong> — when you hit a wall, it helps you push through</div>
     </div>
   </div>
-  <button class="snext" onclick="goStep(1)">Let's get started →</button>
+  <button class="snext" style="background:#2C2416;color:#fff;width:100%;border:none;border-radius:10px;padding:12px;font-family:sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:8px;" onclick="goStep(1)">Let's get started →</button>
 </div>
 
 <div class="ss" id="s1">
@@ -1136,13 +1136,16 @@ var defaultHabits=[
 
 // ─── SETUP ───
 function goStep(n){
-  if(n===2){var nm=(document.getElementById('sName').value||'').trim();if(!nm){document.getElementById('sName').focus();return;}U.name=nm;}
-  if(n===3){var g=(document.getElementById('sGoal').value||'').trim();if(!g){document.getElementById('sGoal').focus();return;}U.goal=g;U.why=(document.getElementById('sWhy').value||'').trim();}
-  if(n===4&&challenges.length===0){var sc=document.getElementById('selCount');if(sc){sc.textContent='Please select at least one above.';sc.style.color='var(--rust)';}return;}
-  document.getElementById('s'+setupStep).classList.remove('on');
-  setupStep=n;
-  document.getElementById('s'+n).classList.add('on');
-  for(var i=0;i<=5;i++){var d=document.getElementById('sd'+i);if(d)d.classList.toggle('on',i===n);}
+  try{
+    if(n===2){var nm=(document.getElementById('sName').value||'').trim();if(!nm){document.getElementById('sName').focus();return;}U.name=nm;}
+    if(n===3){var g=(document.getElementById('sGoal').value||'').trim();if(!g){document.getElementById('sGoal').focus();return;}U.goal=g;U.why=(document.getElementById('sWhy').value||'').trim();}
+    if(n===4&&challenges.length===0){var sc=document.getElementById('selCount');if(sc){sc.textContent='Please select at least one above.';sc.style.color='var(--rust)';}return;}
+    var cur=document.getElementById('s'+setupStep);if(cur)cur.classList.remove('on');
+    setupStep=n;
+    var nxt=document.getElementById('s'+n);if(nxt)nxt.classList.add('on');
+    for(var i=0;i<=5;i++){var d=document.getElementById('sd'+i);if(d)d.classList.toggle('on',i===n);}
+    window.scrollTo(0,0);
+  }catch(e){console.warn('goStep error:',e);}
 }
 function togC(el,val){
   var idx=challenges.indexOf(val);
@@ -1170,6 +1173,7 @@ function forceSkipSetup(){
 }
 
 function finishSetup(){
+  try{
   var modal=document.getElementById('setup');
   if(modal)modal.classList.add('gone');
   lastOpenDate=getTodayStr();
