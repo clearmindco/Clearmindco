@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Clear Mind Co.">
 <meta name="theme-color" content="#2C2416">
 <title>Clear Mind Co. — FOCUS MODE</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -517,7 +517,7 @@ margin:4px;transition:all .15s;cursor:default;
       <div style="font-size:12px;color:var(--text);line-height:1.4;"><strong style="color:var(--dark)">A coach in your corner</strong> — when you hit a wall, it helps you push through</div>
     </div>
   </div>
-  <button class="snext" style="background:#2C2416;color:#fff;width:100%;border:none;border-radius:10px;padding:12px;font-family:sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:8px;" onclick="goStep(1)">Let's get started →</button>
+  <button class="snext" onclick="(function(){document.getElementById('s0').classList.remove('on');document.getElementById('s1').classList.add('on');document.getElementById('sd0').classList.remove('on');document.getElementById('sd1').classList.add('on');if(window.setupStep!==undefined)window.setupStep=1;})()">Let's get started →</button>
 </div>
 
 <div class="ss" id="s1">
@@ -1098,10 +1098,10 @@ margin:4px;transition:all .15s;cursor:default;
 </div><!-- /app -->
 
 <script>
-// Global error handler — catches script errors gracefully
+// Error logging only - don't swallow errors
 window.onerror=function(msg,src,line,col,err){
-  console.warn('CMC error:',msg,'at',line);
-  return true; // Prevent default error UI
+  console.error('CMC error:',msg,'line:',line,'col:',col);
+  return false;
 };
 // ─── DATA ───
 var QS=[
@@ -1121,7 +1121,7 @@ var QS=[
 ];
 
 var U={name:'',goal:'',why:'',challenges:[],push:'medium',growthStyle:'flower',tasks:[],goals:[],jEntries:[],habits:[],calNotes:{}};
-var tDone=0,hDone=0,oneDone=false,setupStep=0,challenges=[],pushStyle='medium',growthStyle='flower';
+var tDone=0,hDone=0,oneDone=false,setupStep=0,challenges=[],pushStyle='medium',growthStyle='flower';window.setupStep=0;
 var growthScore=0;
 
 // ─── DEFAULT HABITS ───
@@ -2005,11 +2005,10 @@ function runApp(){
   }catch(e){console.warn('CMC startup:',e);}
 }
 // Run when DOM is ready
-if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',runApp);
-}else{
-  runApp();
-}
+// Always defer to next tick to ensure DOM is fully ready
+setTimeout(function(){
+  try{runApp();}catch(e){console.error('runApp failed:',e);}
+},0);
 
 
 // ─── NATIVE CANVAS CHART — no dependencies ───
