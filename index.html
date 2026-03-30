@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="en">
 <head>
@@ -62,7 +62,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .setup-dots{display:flex;gap:6px;justify-content:center;margin-bottom:20px;}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(–faint);transition:all .2s;}
 .sdot.on{background:var(–brown);width:18px;border-radius:3px;}
-.ss{display:none;} .ss.on{display:block;animation:fadeIn .2s ease;}
+.ss{display:none!important;} .ss.on{display:block!important;animation:fadeIn .2s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .sq{font-family:‘Cormorant Garamond’,serif;font-size:21px;font-weight:700;color:var(–dark);line-height:1.3;margin-bottom:5px;}
 .sh{font-size:12px;color:var(–dim);margin-bottom:16px;line-height:1.5;}
@@ -517,15 +517,15 @@ margin:4px;transition:all .15s;cursor:default;
       <div style="font-size:12px;color:var(--text);line-height:1.4;"><strong style="color:var(--dark)">A coach in your corner</strong> — when you hit a wall, it helps you push through</div>
     </div>
   </div>
-  <button class="snext" onclick="(function(){document.getElementById('s0').classList.remove('on');document.getElementById('s1').classList.add('on');document.getElementById('sd0').classList.remove('on');document.getElementById('sd1').classList.add('on');if(window.setupStep!==undefined)window.setupStep=1;})()">Let's get started →</button>
+  <button type="button" class="snext" onclick="goStep(1)">Let's get started →</button>
 </div>
 
 <div class="ss" id="s1">
   <div class="sq">What's your name?</div>
   <div class="sh">This system is built around you. Let's start there.</div>
-  <input class="si" id="sName" placeholder="Your first name" maxlength="30" onkeydown="if(event.key==='Enter')goStep(2)">
-  <button class="snext" onclick="goStep(2)">Continue →</button>
-  <button class="sback" onclick="goStep(0)">← Back</button>
+  <input class="si" id="sName" placeholder="Your first name" maxlength="30">
+  <button type="button" class="snext" onclick="goStep(2)">Continue →</button>
+  <button type="button" class="sback" onclick="goStep(0)">← Back</button>
 </div>
 
 <div class="ss" id="s2">
@@ -535,8 +535,8 @@ margin:4px;transition:all .15s;cursor:default;
   <div class="sq" style="font-size:17px;margin-top:2px">Why does it matter?</div>
   <div class="sh">One honest sentence. This is your fuel when motivation drops.</div>
   <textarea class="sta" id="sWhy" placeholder="What changes in your life when you hit this goal?"></textarea>
-  <button class="snext" onclick="goStep(3)">Continue →</button>
-  <button class="sback" onclick="goStep(1)">← Back</button>
+  <button type="button" class="snext" onclick="goStep(3)">Continue →</button>
+  <button type="button" class="sback" onclick="goStep(1)">← Back</button>
 </div>
 
 <div class="ss" id="s3">
@@ -549,8 +549,8 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="c-opt" onclick="togC(this,'ADHD / Distraction')">ADHD / Distraction</div>
     <div class="c-opt" onclick="togC(this,'Consistency')">Consistency — I go hard then fall off</div>
   </div>
-  <button class="snext" onclick="goStep(4)">Continue →</button>
-  <button class="sback" onclick="goStep(2)">← Back</button>
+  <button type="button" class="snext" onclick="goStep(4)">Continue →</button>
+  <button type="button" class="sback" onclick="goStep(2)">← Back</button>
 </div>
 
 <div class="ss" id="s4">
@@ -561,8 +561,8 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="push-opt sel" onclick="selPush(this,'medium')">Medium<br><span style="font-size:10px">Direct &amp; energized</span></div>
     <div class="push-opt" onclick="selPush(this,'hard')">Hard Mode<br><span style="font-size:10px;color:var(--dim)">No excuses</span></div>
   </div>
-  <button class="snext" onclick="goStep(5)">Continue →</button>
-  <button class="sback" onclick="goStep(3)">← Back</button>
+  <button type="button" class="snext" onclick="goStep(5)">Continue →</button>
+  <button type="button" class="sback" onclick="goStep(3)">← Back</button>
 </div>
 
 <div class="ss" id="s5">
@@ -580,8 +580,8 @@ margin:4px;transition:all .15s;cursor:default;
       <div class="growth-opt-sub">Warrior levels up with you</div>
     </div>
   </div>
-  <button class="snext" onclick="finishSetup()">Build My System →</button>
-  <button class="sback" onclick="goStep(4)">← Back</button>
+  <button type="button" class="snext" onclick="finishSetup()">Build My System →</button>
+  <button type="button" class="sback" onclick="goStep(4)">← Back</button>
 </div>
 ```
 
@@ -772,7 +772,7 @@ margin:4px;transition:all .15s;cursor:default;
     </div>
     <div id="taskList"><div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No tasks yet. Add one below.</div></div>
     <div class="add-task-row">
-      <input class="task-inp" id="taskInp" placeholder="What's the task?" onkeydown="if(event.key==='Enter')addTask()">
+      <input class="task-inp" id="taskInp" placeholder="What's the task?">
       <select class="pri-sel" id="taskPri">
         <option value="must">Must Do</option>
         <option value="should" selected>Should Do</option>
@@ -847,7 +847,7 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="card-sub">Tap to check off. Add your own habits below. Missed a day? No shame — just start again.</div>
     <div id="habitList"></div>
     <div class="add-habit-row">
-      <input class="habit-inp" id="habitInp" placeholder="Add your own habit..." onkeydown="if(event.key==='Enter')addHabit()">
+      <input class="habit-inp" id="habitInp" placeholder="Add your own habit...">
       <button class="add-habit-btn" onclick="addHabit()">Add</button>
     </div>
   </div>
@@ -910,7 +910,7 @@ margin:4px;transition:all .15s;cursor:default;
       <div class="msg coach"><div class="av avc">✨</div><div class="bubble" id="openMsg">Hey. I'm your Clear Mind Coach. Tell me what's going on right now — let's figure out your next move.</div></div>
     </div>
     <div class="chat-row">
-      <textarea class="chat-inp" id="chatInp" placeholder="Tell me what you're going through..." rows="1" onkeydown="handleKey(event)"></textarea>
+      <textarea class="chat-inp" id="chatInp" placeholder="Tell me what you're going through..." rows="1"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMsg()">→</button>
     </div>
   </div>
@@ -2396,6 +2396,54 @@ function cel(e,t,m,r){
 </div>
 
 -e
+
+<script>
+// Safari fix — bind setup navigation with addEventListener
+function bindSetupNav(){
+  var sName=document.getElementById('sName');
+  if(sName){
+    sName.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();goStep(2);}
+    });
+  }
+  // Bind all setup next/back buttons with addEventListener as backup
+  var steps=[
+    {nextId:'s0Next',backId:null,nextStep:1,backStep:null},
+    {nextId:'s1Next',backId:'s1Back',nextStep:2,backStep:0},
+    {nextId:'s2Next',backId:'s2Back',nextStep:3,backStep:1},
+    {nextId:'s3Next',backId:'s3Back',nextStep:4,backStep:2},
+    {nextId:'s4Next',backId:'s4Back',nextStep:5,backStep:3},
+  ];
+  // Also bind by class as fallback
+  document.querySelectorAll('.snext').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
+      var fn=btn.getAttribute('onclick');
+      if(fn&&fn.indexOf('goStep')>-1){
+        var m=fn.match(/goStep\((\d+)\)/);
+        if(m)goStep(parseInt(m[1]));
+      } else if(fn&&fn.indexOf('finishSetup')>-1){
+        finishSetup();
+      }
+    });
+  });
+  document.querySelectorAll('.sback').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
+      var fn=btn.getAttribute('onclick');
+      if(fn){
+        var m=fn.match(/goStep\((\d+)\)/);
+        if(m)goStep(parseInt(m[1]));
+      }
+    });
+  });
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',bindSetupNav);
+}else{
+  bindSetupNav();
+}
+</script>
 
 </body>
 </html>
