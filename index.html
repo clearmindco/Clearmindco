@@ -11,16 +11,17 @@
 <meta name="theme-color" content="#2C2416">
 <title>Clear Mind Co. — FOCUS MODE</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}button{-webkit-appearance:none;-moz-appearance:none;appearance:none;}input,textarea,select{-webkit-appearance:none;}
+*{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --cream:#F7F2EA;--page:#FEFCF7;--white:#FFFFFF;
-  --line:#EDE4D4;--dark:#2C2416;--text:#3D3020;
-  --dim:#A09278;--faint:#E2D9C8;
-  --brown:#9B6F3E;--brown2:#B8854A;--brown-bg:#FAF0E2;
+  --cream:#F5F0E8;--page:#FDFAF5;--white:#FFFFFF;
+  --line:#E8E0D0;--dark:#2C2416;--text:#3D3326;
+  --dim:#9C8E7A;--faint:#DDD5C4;
+  --brown:#8B6C42;--brown2:#A07848;--brown-bg:#F5EDE0;
   --sage:#5C7A5A;--sage-bg:#EBF2EA;
   --rust:#9B4520;--rust-bg:#FAEAE3;
-  --gold:#B8872A;--gold-bg:#FDF8EC;
+  --gold:#B8872A;--gold-bg:#FDF6E3;
 }
 /* ── DARK MODE ── */
 body.dark-mode{
@@ -51,17 +52,46 @@ body.dark-mode .coach-hero{background:linear-gradient(135deg,#3A2C1E,#2C2010);}
 }
 body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);height:100vh;overflow:hidden;font-size:13px;transition:background .3s,color .3s;}
 
-/* ─── SETUP NAVIGATION — pure CSS, works on every browser ─── */
-.setup-modal{position:fixed;inset:0;z-index:1000;background:rgba(44,36,22,.88);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0 32px;}
+/* ─── SETUP ─── */
+.setup-modal{position:fixed;inset:0;z-index:1000;background:rgba(44,36,22,.7);backdrop-filter:blur(14px);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0 32px;}
 .setup-modal.gone{display:none;}
-.setup-card{background:#FFFFFF;border-radius:20px;padding:28px 24px;max-width:390px;width:92%;box-shadow:0 24px 60px rgba(44,36,22,.25);position:relative;margin:auto;z-index:1001;}
-.ss{display:none!important;}
-.ss.on{display:block!important;}
-.snext{-webkit-appearance:none;appearance:none;width:100%;background:#2C2416;color:#FFFFFF;border:none;border-radius:10px;padding:14px;font-family:‘DM Sans’,sans-serif;font-size:15px;font-weight:600;cursor:pointer;display:block;margin-top:8px;text-align:center;touch-action:manipulation;}
-.sback{-webkit-appearance:none;appearance:none;width:100%;background:none;border:none;color:#9C8E7A;font-family:‘DM Sans’,sans-serif;font-size:13px;cursor:pointer;padding:10px;margin-top:4px;display:block;text-align:center;touch-action:manipulation;}
+.setup-card{background:var(–white);border-radius:20px;padding:28px 24px;max-width:390px;width:92%;box-shadow:0 24px 60px rgba(44,36,22,.2);animation:pop .35s cubic-bezier(.34,1.56,.64,1);position:relative;margin:auto;}
+.setup-card::-webkit-scrollbar{width:0;}
+@keyframes pop{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+.setup-logo{font-family:‘Cormorant Garamond’,serif;font-size:22px;font-weight:700;color:var(–dark);text-align:center;margin-bottom:3px;}
+.setup-tag{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(–dim);text-align:center;margin-bottom:22px;}
+.setup-dots{display:flex;gap:6px;justify-content:center;margin-bottom:20px;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(–faint);transition:all .2s;}
+.sdot.on{background:var(–brown);width:18px;border-radius:3px;}
+.ss{display:none;} .ss.on{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sq{font-family:‘Cormorant Garamond’,serif;font-size:21px;font-weight:700;color:var(–dark);line-height:1.3;margin-bottom:5px;}
+.sh{font-size:12px;color:var(–dim);margin-bottom:16px;line-height:1.5;}
+.si{width:100%;background:var(–cream);border:1.5px solid var(–line);border-radius:10px;padding:12px 14px;font-family:‘DM Sans’,sans-serif;font-size:14px;color:var(–dark);outline:none;transition:border-color .15s;margin-bottom:11px;}
+.si::placeholder{color:var(–faint);} .si:focus{border-color:var(–brown);}
+.sta{width:100%;background:var(–cream);border:1.5px solid var(–line);border-radius:10px;padding:11px 14px;font-family:‘DM Sans’,sans-serif;font-size:13px;color:var(–dark);outline:none;resize:none;min-height:70px;line-height:1.6;transition:border-color .15s;margin-bottom:11px;}
+.sta::placeholder{color:var(–faint);} .sta:focus{border-color:var(–brown);}
+.snext{width:100%;background:var(–dark);color:var(–white);border:none;border-radius:10px;padding:12px;font-family:‘DM Sans’,sans-serif;font-size:14px;font-weight:500;cursor:pointer;}
+.snext:hover{opacity:.85;}
+.sback{width:100%;background:none;border:none;color:var(–dim);font-family:‘DM Sans’,sans-serif;font-size:12px;font-weight:500;cursor:pointer;padding:10px;margin-top:4px;border-radius:8px;transition:color .15s;}
+.sback:hover{color:var(–brown);}
+.c-opts{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.c-opt{padding:12px 15px;border-radius:10px;border:1.5px solid var(–line);background:var(–white);font-family:‘DM Sans’,sans-serif;font-size:13px;color:var(–text);cursor:pointer;transition:all .15s;text-align:center;}
+.c-opt:hover{border-color:var(–brown);color:var(–brown);}
+.c-opt.sel{border-color:var(–brown);background:var(–brown-bg);color:var(–brown);font-weight:500;}
+.push-row{display:flex;gap:8px;margin-bottom:14px;}
+.push-opt{flex:1;padding:13px 5px;border-radius:10px;border:1.5px solid var(–line);background:var(–white);font-family:‘DM Sans’,sans-serif;font-size:11px;font-weight:500;color:var(–dim);cursor:pointer;transition:all .15s;text-align:center;line-height:1.6;}
+.push-opt.sel{border-color:var(–brown);background:var(–brown-bg);color:var(–brown);}
+.growth-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.growth-opt{padding:16px 10px;border-radius:12px;border:1.5px solid var(–line);background:var(–white);cursor:pointer;transition:all .15s;text-align:center;}
+.growth-opt:hover{border-color:var(–brown);}
+.growth-opt.sel{border-color:var(–brown);background:var(–brown-bg);}
+.growth-opt-icon{font-size:28px;margin-bottom:6px;}
+.growth-opt-name{font-size:12px;font-weight:600;color:var(–dark);}
+.growth-opt-sub{font-size:10px;color:var(–dim);margin-top:2px;}
 
 /* ─── CELEBRATION ─── */
-.overlay{display:none;position:fixed;inset:0;z-index:998;background:rgba(44,36,22,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.overlay{display:none;position:fixed;inset:0;z-index:998;background:rgba(44,36,22,.55);backdrop-filter:blur(10px);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
 .overlay.show{display:flex;}
 .cel{background:var(–white);border-radius:20px;padding:32px 26px;text-align:center;max-width:310px;width:90%;box-shadow:0 24px 60px rgba(44,36,22,.18);animation:pop .35s cubic-bezier(.34,1.56,.64,1);margin:auto;}
 .cel-emoji{font-size:46px;display:block;margin-bottom:12px;}
@@ -73,7 +103,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .cel-btn{background:var(–dark);color:var(–white);border:none;border-radius:8px;padding:10px 22px;width:100%;font-family:‘DM Sans’,sans-serif;font-size:13px;font-weight:500;cursor:pointer;}
 
 /* ─── CALENDAR MODAL ─── */
-.cal-modal{display:none;position:fixed;inset:0;z-index:997;background:rgba(44,36,22,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;}
+.cal-modal{display:none;position:fixed;inset:0;z-index:997;background:rgba(44,36,22,.55);backdrop-filter:blur(8px);align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;}
 .cal-modal.show{display:flex;}
 .cal-card{background:var(–white);border-radius:16px;padding:20px;max-width:380px;width:94%;box-shadow:0 20px 50px rgba(44,36,22,.18);animation:pop .3s ease;margin:auto;}
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
@@ -116,7 +146,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .pn.on{color:var(–brown);border-bottom-color:var(–brown);font-weight:600;}
 
 /* ─── COVER ─── */
-.cover{height:88px;background:linear-gradient(135deg,#D4B896 0%,#A8784A 45%,#7A5230 100%);display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;}
+.cover{height:88px;background:linear-gradient(135deg,#C4A882 0%,#9A7040 45%,#6B4E2A 100%);display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;}
 .cover::before{content:’’;position:absolute;inset:0;background:radial-gradient(ellipse at 15% 50%,rgba(255,255,255,.07),transparent 55%);}
 .c-eye{position:absolute;top:11px;left:20px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .c-greeting{font-family:‘Cormorant Garamond’,serif;font-size:27px;font-weight:600;font-style:italic;color:rgba(255,255,255,.92);position:relative;z-index:1;}
@@ -131,7 +161,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .pg{display:none;max-width:680px;}
 .pg.on{display:block;animation:fade .18s ease;}
 @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
-@keyframes growPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
 /* ─── UTILS ─── */
 .slbl{font-size:9px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(–dim);margin-bottom:9px;display:flex;align-items:center;gap:10px;}
@@ -145,7 +174,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .r-inp::placeholder{color:var(–faint);}
 .r-inp:focus{border-color:var(–brown);}
 .r-item{margin-bottom:10px;}
-.action-btn{-webkit-appearance:none;width:100%;background:#2C2416;color:#FFFFFF;border:none;border-radius:8px;padding:11px;font-family:‘DM Sans’,sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:10px;}
+.action-btn{width:100%;background:var(–dark);color:var(–white);border:none;border-radius:8px;padding:10px;font-family:‘DM Sans’,sans-serif;font-size:12px;font-weight:500;cursor:pointer;margin-top:10px;}
 .action-btn:hover{opacity:.85;}
 .win-btn{width:100%;background:none;border:1px dashed var(–line);border-radius:8px;padding:10px;font-family:‘DM Sans’,sans-serif;font-size:12px;font-weight:500;color:var(–dim);cursor:pointer;transition:all .15s;margin-top:10px;}
 .win-btn:hover{border-color:var(–brown);color:var(–brown);}
@@ -356,7 +385,7 @@ margin:4px;transition:all .15s;cursor:default;
 .chat-inp{flex:1;background:var(–white);border:1px solid var(–line);border-radius:8px;padding:8px 11px;font-family:‘DM Sans’,sans-serif;font-size:13px;color:var(–dark);outline:none;transition:border-color .15s;resize:none;}
 .chat-inp::placeholder{color:var(–faint);}
 .chat-inp:focus{border-color:var(–brown);}
-.send-btn{-webkit-appearance:none;width:33px;height:33px;border-radius:8px;background:#2C2416;color:white;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;}
+.send-btn{width:33px;height:33px;border-radius:8px;background:var(–dark);color:white;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;}
 .send-btn:hover{opacity:.85;}
 .send-btn:disabled{opacity:.35;cursor:default;}
 
@@ -425,7 +454,7 @@ margin:4px;transition:all .15s;cursor:default;
 .tour-title{font-family:‘Cormorant Garamond’,serif;font-size:18px;font-weight:700;color:var(–dark);line-height:1.3;}
 .tour-body{font-size:12px;color:var(–dim);line-height:1.65;margin-bottom:16px;}
 .tour-actions{display:flex;gap:8px;align-items:center;}
-.tour-next{-webkit-appearance:none;background:#2C2416;color:#FFFFFF;border:none;border-radius:8px;padding:11px 20px;font-family:‘DM Sans’,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex:1;}
+.tour-next{background:var(–dark);color:var(–white);border:none;border-radius:8px;padding:11px 20px;font-family:‘DM Sans’,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex:1;}
 .tour-next:active{opacity:.8;}
 .tour-skip{background:none;border:none;color:var(–dim);font-family:‘DM Sans’,sans-serif;font-size:12px;cursor:pointer;padding:4px 8px;flex-shrink:0;}
 .tour-start-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:linear-gradient(135deg,var(–brown),var(–brown2));color:var(–white);border:none;border-radius:10px;font-family:‘DM Sans’,sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;}
@@ -442,10 +471,6 @@ margin:4px;transition:all .15s;cursor:default;
 .gs-desc{font-size:12px;color:var(–dim);line-height:1.55;}
 .gs-action{display:inline-block;margin-top:6px;padding:4px 11px;background:var(–brown-bg);border:1px solid #DDD0BC;border-radius:20px;font-size:11px;font-weight:500;color:var(–brown);cursor:pointer;transition:all .15s;}
 .gs-action:hover{background:var(–brown);color:var(–white);}
-.cal-add-btn{display:inline-flex;align-items:center;gap:5px;background:var(–brown-bg);border:1px solid var(–line);border-radius:8px;padding:6px 12px;font-family:‘DM Sans’,sans-serif;font-size:11px;font-weight:600;color:var(–brown);cursor:pointer;transition:all .15s;}
-.cal-add-btn:hover{background:var(–brown);color:white;}
-.task-del-btn{background:none;border:none;color:var(–faint);font-size:13px;cursor:pointer;padding:0 4px;flex-shrink:0;transition:color .15s;}
-.task-del-btn:hover{color:var(–rust);}
 </style>
 
 </head>
@@ -488,15 +513,15 @@ margin:4px;transition:all .15s;cursor:default;
       <div style="font-size:12px;color:var(--text);line-height:1.4;"><strong style="color:var(--dark)">A coach in your corner</strong> — when you hit a wall, it helps you push through</div>
     </div>
   </div>
-  <button type="button" class="snext" onclick="goStep(1)">Let's get started →</button>
+  <button class="snext" onclick="goStep(1)">Let's get started →</button>
 </div>
 
 <div class="ss" id="s1">
   <div class="sq">What's your name?</div>
   <div class="sh">This system is built around you. Let's start there.</div>
-  <input class="si" id="sName" placeholder="Your first name" maxlength="30">
-  <button type="button" class="snext" onclick="goStep(2)">Continue →</button>
-  <button type="button" class="sback" onclick="goStep(0)">← Back</button>
+  <input class="si" id="sName" placeholder="Your first name" maxlength="30" onkeydown="if(event.key==='Enter')goStep(2)">
+  <button class="snext" onclick="goStep(2)">Continue →</button>
+  <button class="sback" onclick="goStep(0)">← Back</button>
 </div>
 
 <div class="ss" id="s2">
@@ -506,8 +531,8 @@ margin:4px;transition:all .15s;cursor:default;
   <div class="sq" style="font-size:17px;margin-top:2px">Why does it matter?</div>
   <div class="sh">One honest sentence. This is your fuel when motivation drops.</div>
   <textarea class="sta" id="sWhy" placeholder="What changes in your life when you hit this goal?"></textarea>
-  <button type="button" class="snext" onclick="goStep(3)">Continue →</button>
-  <button type="button" class="sback" onclick="goStep(1)">← Back</button>
+  <button class="snext" onclick="goStep(3)">Continue →</button>
+  <button class="sback" onclick="goStep(1)">← Back</button>
 </div>
 
 <div class="ss" id="s3">
@@ -520,8 +545,8 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="c-opt" onclick="togC(this,'ADHD / Distraction')">ADHD / Distraction</div>
     <div class="c-opt" onclick="togC(this,'Consistency')">Consistency — I go hard then fall off</div>
   </div>
-  <button type="button" class="snext" onclick="goStep(4)">Continue →</button>
-  <button type="button" class="sback" onclick="goStep(2)">← Back</button>
+  <button class="snext" onclick="goStep(4)">Continue →</button>
+  <button class="sback" onclick="goStep(2)">← Back</button>
 </div>
 
 <div class="ss" id="s4">
@@ -532,8 +557,8 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="push-opt sel" onclick="selPush(this,'medium')">Medium<br><span style="font-size:10px">Direct &amp; energized</span></div>
     <div class="push-opt" onclick="selPush(this,'hard')">Hard Mode<br><span style="font-size:10px;color:var(--dim)">No excuses</span></div>
   </div>
-  <button type="button" class="snext" onclick="goStep(5)">Continue →</button>
-  <button type="button" class="sback" onclick="goStep(3)">← Back</button>
+  <button class="snext" onclick="goStep(5)">Continue →</button>
+  <button class="sback" onclick="goStep(3)">← Back</button>
 </div>
 
 <div class="ss" id="s5">
@@ -551,8 +576,8 @@ margin:4px;transition:all .15s;cursor:default;
       <div class="growth-opt-sub">Warrior levels up with you</div>
     </div>
   </div>
-  <button type="button" class="snext" onclick="finishSetup()">Build My System →</button>
-  <button type="button" class="sback" onclick="goStep(4)">← Back</button>
+  <button class="snext" onclick="finishSetup()">Build My System →</button>
+  <button class="sback" onclick="goStep(4)">← Back</button>
 </div>
 ```
 
@@ -736,14 +761,10 @@ margin:4px;transition:all .15s;cursor:default;
       <div class="mit-explain-body">Your MIT is the <strong>ONE thing</strong> your future self will thank you for doing today. Not three things. Not a list. <em>One thing.</em><br><br>Mark it <strong>Must Do</strong> and do it before email, before social media, before anything else. If you do nothing else today — do this. That's a win.</div>
     </div>
     <div class="card-title">Today's Planner</div>
-    <div class="card-sub" style="margin-bottom:10px;">Add up to 3 tasks. Do the <span style="color:var(--rust);font-weight:600">Must Do</span> first — everything else is a bonus.</div>
-    <div style="display:flex;gap:7px;margin-bottom:10px;">
-      <button class="cal-add-btn" onclick="addTasksToCalendar()">📅 Add to Calendar</button>
-      <button class="cal-add-btn" onclick="window.print()">Print Plan</button>
-    </div>
+    <div class="card-sub">Add up to 3 tasks. Do the <span style="color:var(--rust);font-weight:600">Must Do</span> first — everything else is a bonus. <button onclick="window.print()" style="background:none;border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;color:var(--dim);cursor:pointer;margin-left:6px;transition:all .15s;" onmouseover="this.style.borderColor='var(--brown)';this.style.color='var(--brown)'" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--dim)'">Print today's plan</button></div>
     <div id="taskList"><div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No tasks yet. Add one below.</div></div>
     <div class="add-task-row">
-      <input class="task-inp" id="taskInp" placeholder="What's the task?">
+      <input class="task-inp" id="taskInp" placeholder="What's the task?" onkeydown="if(event.key==='Enter')addTask()">
       <select class="pri-sel" id="taskPri">
         <option value="must">Must Do</option>
         <option value="should" selected>Should Do</option>
@@ -818,7 +839,7 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="card-sub">Tap to check off. Add your own habits below. Missed a day? No shame — just start again.</div>
     <div id="habitList"></div>
     <div class="add-habit-row">
-      <input class="habit-inp" id="habitInp" placeholder="Add your own habit...">
+      <input class="habit-inp" id="habitInp" placeholder="Add your own habit..." onkeydown="if(event.key==='Enter')addHabit()">
       <button class="add-habit-btn" onclick="addHabit()">Add</button>
     </div>
   </div>
@@ -881,7 +902,7 @@ margin:4px;transition:all .15s;cursor:default;
       <div class="msg coach"><div class="av avc">✨</div><div class="bubble" id="openMsg">Hey. I'm your Clear Mind Coach. Tell me what's going on right now — let's figure out your next move.</div></div>
     </div>
     <div class="chat-row">
-      <textarea class="chat-inp" id="chatInp" placeholder="Tell me what you're going through..." rows="1"></textarea>
+      <textarea class="chat-inp" id="chatInp" placeholder="Tell me what you're going through..." rows="1" onkeydown="handleKey(event)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMsg()">→</button>
     </div>
   </div>
@@ -1069,11 +1090,6 @@ margin:4px;transition:all .15s;cursor:default;
 </div><!-- /app -->
 
 <script>
-// Error logging only - don't swallow errors
-window.onerror=function(msg,src,line,col,err){
-  console.error('CMC error:',msg,'line:',line,'col:',col);
-  return false;
-};
 // ─── DATA ───
 var QS=[
   {t:'The gap between who you are and who you want to be is closed by what you do today.',a:'Clear Mind Co.'},
@@ -1092,7 +1108,7 @@ var QS=[
 ];
 
 var U={name:'',goal:'',why:'',challenges:[],push:'medium',growthStyle:'flower',tasks:[],goals:[],jEntries:[],habits:[],calNotes:{}};
-var tDone=0,hDone=0,oneDone=false,setupStep=0,challenges=[],pushStyle='medium',growthStyle='flower';window.setupStep=0;
+var tDone=0,hDone=0,oneDone=false,setupStep=0,challenges=[],pushStyle='medium',growthStyle='flower';
 var growthScore=0;
 
 // ─── DEFAULT HABITS ───
@@ -1106,43 +1122,15 @@ var defaultHabits=[
 ];
 
 // ─── SETUP ───
-function showSetupStep(n){
-  for(var i=0;i<=5;i++){
-    var step=document.getElementById('s'+i);
-    var dot=document.getElementById('sd'+i);
-    if(step){if(i===n)step.classList.add('on');else step.classList.remove('on');}
-    if(dot){if(i===n)dot.classList.add('on');else dot.classList.remove('on');}
-  }
-  setupStep=n;
-  window.setupStep=n;
-  window.scrollTo(0,0);
-  return false;
-}
 function goStep(n){
-  try{
-    if(n===2){
-      var nameEl=document.getElementById('sName');
-      var nm=(nameEl&&nameEl.value?nameEl.value:'').trim();
-      if(!nm){if(nameEl)nameEl.focus();return false;}
-      U.name=nm;
-    }
-    if(n===3){
-      var goalEl=document.getElementById('sGoal');
-      var whyEl=document.getElementById('sWhy');
-      var g=(goalEl&&goalEl.value?goalEl.value:'').trim();
-      if(!g){if(goalEl)goalEl.focus();return false;}
-      U.goal=g;
-      U.why=(whyEl&&whyEl.value?whyEl.value:'').trim();
-    }
-    if(n===4&&challenges.length===0){
-      var sc=document.getElementById('selCount');
-      if(sc){sc.textContent='Please select at least one above.';sc.style.color='var(--rust)';}
-      return false;
-    }
-    return showSetupStep(n);
-  }catch(e){console.warn('goStep error:',e);return false;}
+  if(n===2){var nm=(document.getElementById('sName').value||'').trim();if(!nm){document.getElementById('sName').focus();return;}U.name=nm;}
+  if(n===3){var g=(document.getElementById('sGoal').value||'').trim();if(!g){document.getElementById('sGoal').focus();return;}U.goal=g;U.why=(document.getElementById('sWhy').value||'').trim();}
+  if(n===4&&challenges.length===0){var sc=document.getElementById('selCount');if(sc){sc.textContent='Please select at least one above.';sc.style.color='var(--rust)';}return;}
+  document.getElementById('s'+setupStep).classList.remove('on');
+  setupStep=n;
+  document.getElementById('s'+n).classList.add('on');
+  for(var i=0;i<=5;i++){var d=document.getElementById('sd'+i);if(d)d.classList.toggle('on',i===n);}
 }
-
 function togC(el,val){
   var idx=challenges.indexOf(val);
   if(idx>-1){challenges.splice(idx,1);el.classList.remove('sel');}
@@ -1155,7 +1143,7 @@ function selPush(el,val){document.querySelectorAll('.push-opt').forEach(function
 function selGrowth(val){
   growthStyle=val;U.growthStyle=val;
   document.querySelectorAll('.growth-opt').forEach(function(o){o.classList.remove('sel');});
-  var sel=document.getElementById('go-'+val);if(sel)sel.classList.add('sel');
+  document.getElementById('go-'+val).classList.add('sel');
 }
 function forceSkipSetup(){
   // Emergency escape — dismiss modal and launch with whatever we have
@@ -1169,7 +1157,6 @@ function forceSkipSetup(){
 }
 
 function finishSetup(){
-  try{
   var modal=document.getElementById('setup');
   if(modal)modal.classList.add('gone');
   lastOpenDate=getTodayStr();
@@ -1346,7 +1333,16 @@ function updateFocusTaskDisplay(){
 // ─── LOCAL STORAGE ───
 var SAVE_KEY='cmc_data_v10';
 function saveData(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({U:U,growthScore:growthScore,streak:currentStreak,lastDate:lastOpenDate,bannerDismissed:bannerDismissed}));}catch(e){}
+  try{
+    var toSave={
+      U:U,
+      growthScore:growthScore,
+      streak:currentStreak,
+      lastDate:lastOpenDate,
+      bannerDismissed:bannerDismissed
+    };
+    localStorage.setItem(SAVE_KEY,JSON.stringify(toSave));
+  }catch(e){}
 }
 function loadData(){
   try{
@@ -1408,8 +1404,7 @@ var KNIGHT_STAGES=[
 ];
 
 function renderGrowth(){
-  var style=U.growthStyle||growthStyle||'flower';U.growthStyle=style;growthStyle=style;
-  var stages=style==='knight'?KNIGHT_STAGES:FLOWER_STAGES;
+  var stages=U.growthStyle==='knight'?KNIGHT_STAGES:FLOWER_STAGES;
   var stage=stages[0];
   for(var i=stages.length-1;i>=0;i--){if(growthScore>=stages[i].score){stage=stages[i];break;}}
   var nextStage=null;
@@ -1420,11 +1415,13 @@ function renderGrowth(){
   var gwFill=document.getElementById('gwFill');if(gwFill)gwFill.style.width=Math.max(5,pct)+'%';
   var gwStatus=document.getElementById('gwStatus');if(gwStatus)gwStatus.textContent=stage.desc+(nextStage?' · '+(nextStage.score-growthScore)+' points to next stage':'');
   var gwLevel=document.getElementById('gwLevel');if(gwLevel)gwLevel.textContent=stage.level;
-  var gwTitle=document.getElementById('gwTitle');if(gwTitle)gwTitle.textContent=style==='knight'?'Your Knight\'s Quest':'Your Garden';
+  var gwTitle=document.getElementById('gwTitle');if(gwTitle)gwTitle.textContent=U.growthStyle==='knight'?'Your Knight\'s Quest':'Your Garden';
 }
 function addGrowthScore(pts){growthScore+=pts;renderGrowth();}
 // Pulse animation for icon
-// growPulse animation injected safely at runtime (see injectStyles)
+var styleEl=document.createElement('style');
+styleEl.textContent='@keyframes growPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}';
+document.head.appendChild(styleEl);
 
 // ─── STATS ───
 function updateStats(){
@@ -1978,9 +1975,8 @@ function saveCalEntry(){
   cel('📅','Day planned.','You set an intention for that day. That\'s how clarity is built.','Review it the morning of — and make it happen.');
 }
 
-// ─── BOOTSTRAP — runs after DOM is ready ───
-function runApp(){
-  try{loadDarkPref();}catch(e){}
+// ─── BOOTSTRAP — check localStorage on load ───
+(function(){
   try{
     var hasData=loadData();
     if(hasData&&U.name){
@@ -1998,101 +1994,10 @@ function runApp(){
   }
   // Show setup fresh — make sure step 0 is visible
   var s=document.getElementById('s0');if(s)s.classList.add('on');
-  }catch(e){console.warn('CMC startup:',e);}
-}
-// Run when DOM is ready
-// Always defer to next tick to ensure DOM is fully ready
-setTimeout(function(){
-  try{runApp();}catch(e){console.error('runApp failed:',e);}
-},0);
-
-
-// ─── NATIVE CANVAS CHART — no dependencies ───
-function drawDebtChart(labels,data){
-  var canvas=document.getElementById('debtChart');
-  if(!canvas)return;
-  var ctx=canvas.getContext('2d');
-  var W=canvas.offsetWidth||300;
-  var H=130;
-  canvas.width=W*window.devicePixelRatio;
-  canvas.height=H*window.devicePixelRatio;
-  canvas.style.width=W+'px';
-  canvas.style.height=H+'px';
-  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
-  var pad={t:10,r:10,b:28,l:44};
-  var gW=W-pad.l-pad.r;
-  var gH=H-pad.t-pad.b;
-  var max=Math.max.apply(null,data)||1;
-  var min=0;
-  var range=max-min||1;
-  // Background
-  ctx.clearRect(0,0,W,H);
-  // Grid lines
-  ctx.strokeStyle='rgba(0,0,0,0.05)';
-  ctx.lineWidth=1;
-  for(var g=0;g<=4;g++){
-    var gy=pad.t+gH*(1-g/4);
-    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+gW,gy);ctx.stroke();
-    // Y labels
-    var val=min+(range*g/4);
-    ctx.fillStyle='#9C8E7A';
-    ctx.font='9px DM Sans,sans-serif';
-    ctx.textAlign='right';
-    var lbl=val>=1000?'$'+(val/1000).toFixed(0)+'k':'$'+Math.round(val);
-    ctx.fillText(lbl,pad.l-4,gy+3);
-  }
-  // Fill area under line
-  if(data.length>1){
-    ctx.beginPath();
-    ctx.moveTo(pad.l,pad.t+gH*(1-(data[0]-min)/range));
-    for(var i=1;i<data.length;i++){
-      var x1=pad.l+gW*(i-1)/(data.length-1);
-      var y1=pad.t+gH*(1-(data[i-1]-min)/range);
-      var x2=pad.l+gW*i/(data.length-1);
-      var y2=pad.t+gH*(1-(data[i]-min)/range);
-      var cpx=(x1+x2)/2;
-      ctx.bezierCurveTo(cpx,y1,cpx,y2,x2,y2);
-    }
-    ctx.lineTo(pad.l+gW,pad.t+gH);
-    ctx.lineTo(pad.l,pad.t+gH);
-    ctx.closePath();
-    ctx.fillStyle='rgba(155,111,62,0.08)';
-    ctx.fill();
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(pad.l,pad.t+gH*(1-(data[0]-min)/range));
-    for(var i=1;i<data.length;i++){
-      var x1=pad.l+gW*(i-1)/(data.length-1);
-      var y1=pad.t+gH*(1-(data[i-1]-min)/range);
-      var x2=pad.l+gW*i/(data.length-1);
-      var y2=pad.t+gH*(1-(data[i]-min)/range);
-      var cpx=(x1+x2)/2;
-      ctx.bezierCurveTo(cpx,y1,cpx,y2,x2,y2);
-    }
-    ctx.strokeStyle='#9B6F3E';
-    ctx.lineWidth=2;
-    ctx.stroke();
-    // Dots
-    for(var i=0;i<data.length;i++){
-      var x=pad.l+gW*i/(data.length-1);
-      var y=pad.t+gH*(1-(data[i]-min)/range);
-      ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);
-      ctx.fillStyle='#9B6F3E';ctx.fill();
-    }
-  }
-  // X labels — show first, middle, last
-  var show=[0,Math.floor((labels.length-1)/2),labels.length-1];
-  ctx.fillStyle='#9C8E7A';ctx.font='9px DM Sans,sans-serif';ctx.textAlign='center';
-  show.forEach(function(i){
-    if(i<labels.length){
-      var x=pad.l+gW*i/(labels.length-1||1);
-      ctx.fillText(labels[i],x,H-6);
-    }
-  });
-}
+})();
 
 // ─── DEBT ───
-var dRowN=0,origT=0,paidN=0;
+var dRowN=0,debtChart=null,origT=0,paidN=0;
 function addDebtRow(name,bal,min,rate){
   dRowN++;var id='dr'+dRowN;
   var el=document.createElement('div');el.className='d-row';el.id=id;
@@ -2134,7 +2039,9 @@ function calcDebt(){
     html+='<div class="di-foot"><span class="di-eta">Gone in '+pStr+'</span><button class="paid-btn" onclick="markPaid('+i+',\''+d.name+'\','+d.orig+')">Mark Paid ✓</button></div></div>';
   });
   document.getElementById('debtList').innerHTML=html;
-  drawDebtChart(cL,cD);
+  var ctx=document.getElementById('debtChart');
+  if(debtChart)debtChart.destroy();
+  debtChart=new Chart(ctx,{type:'line',data:{labels:cL,datasets:[{data:cD,borderColor:'#8B6C42',backgroundColor:'rgba(139,108,66,0.07)',borderWidth:2,pointRadius:2,pointBackgroundColor:'#8B6C42',tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#2C2416',titleColor:'#E8E0D0',bodyColor:'#9C8E7A',callbacks:{label:function(c){return ' $'+c.raw.toLocaleString();}}}},scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C8E7A',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C8E7A',font:{size:10},callback:function(v){return '$'+(v>=1000?(v/1000).toFixed(0)+'k':v);}}}}}});
   document.getElementById('debtResults').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function markPaid(idx,name,amt){
@@ -2168,19 +2075,27 @@ function toggleDark(){
   try{localStorage.setItem('cmc_dark',isDark?'1':'0');}catch(e){}
 }
 function updateThemePill(){
-  try{
-    var lp=document.getElementById('lightPill');
-    var dp=document.getElementById('darkPill');
-    if(!lp||!dp)return;
-    if(isDark){lp.style.background='transparent';lp.style.color='var(--dim)';dp.style.background='var(--dark)';dp.style.color='var(--white)';}
-    else{lp.style.background='var(--dark)';lp.style.color='var(--white)';dp.style.background='transparent';dp.style.color='var(--dim)';}
-  }catch(e){}
+  var lp=document.getElementById('lightPill');
+  var dp=document.getElementById('darkPill');
+  if(!lp||!dp)return;
+  if(isDark){
+    lp.style.background='transparent';lp.style.color='var(--dim)';
+    dp.style.background='var(--dark)';dp.style.color='var(--white)';
+  }else{
+    lp.style.background='var(--dark)';lp.style.color='var(--white)';
+    dp.style.background='transparent';dp.style.color='var(--dim)';
+  }
 }
 function loadDarkPref(){
-  try{if(localStorage.getItem('cmc_dark')==='1'){isDark=true;if(document.body)document.body.classList.add('dark-mode');}}catch(e){}
-  try{updateThemePill();}catch(e){}
+  try{
+    if(localStorage.getItem('cmc_dark')==='1'){
+      isDark=true;
+      document.body.classList.add('dark-mode');
+    }
+  }catch(e){}
+  updateThemePill();
 }
-// loadDarkPref called after DOM ready (see bootstrap)
+loadDarkPref();
 
 // ─── PWA INSTALL ───
 var deferredInstall=null;
@@ -2324,44 +2239,6 @@ function endTour(){
   },300);
 }
 
-
-// ─── ADD TO CALENDAR ───
-function addTasksToCalendar(){
-  var tasks=U.tasks.filter(function(t){return !t.done;});
-  if(!tasks.length){cel('📅','No tasks to add','Add some tasks to your planner first, then tap Add to Calendar.','Tap the Planner tab to get started.');return;}
-  var today=new Date();
-  var dateStr=today.getFullYear()+('0'+(today.getMonth()+1)).slice(-2)+('0'+today.getDate()).slice(-2);
-  var summary=tasks.map(function(t){return (t.pri==='must'?'★ ':t.pri==='should'?'• ':'○ ')+t.name;}).join('\n');
-  var title='Clear Mind Co. — Today\'s Tasks';
-  var desc=summary.replace(/
-/g,'\n');
-  // Build ICS file — works on iPhone Calendar, Google Calendar, Outlook
-  var ics=[
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Clear Mind Co.//FOCUSMODE//EN',
-    'BEGIN:VEVENT',
-    'DTSTART:'+dateStr+'T080000',
-    'DTEND:'+dateStr+'T090000',
-    'SUMMARY:'+title,
-    'DESCRIPTION:'+desc,
-    'BEGIN:VALARM',
-    'TRIGGER:-PT15M',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:Time to work on your Must Do task',
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].join('\r\n');
-  var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;a.download='clearmindco-tasks.ics';
-  document.body.appendChild(a);a.click();
-  document.body.removeChild(a);URL.revokeObjectURL(url);
-  cel('📅','Tasks added to calendar!','Tap the downloaded file to open it in your iPhone Calendar, Google Calendar, or Outlook. It adds a reminder for 8am with all your tasks listed.','Set your alarm and get it done.');
-}
-
 function cel(e,t,m,r){
   document.getElementById('celE').textContent=e;document.getElementById('celT').textContent=t;
   document.getElementById('celM').textContent=m;document.getElementById('celR').textContent=r;
@@ -2392,9 +2269,6 @@ function cel(e,t,m,r){
 </div>
 
 -e
-
-<script>
-</script>
 
 </body>
 </html>
