@@ -15,27 +15,47 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}button{-webkit-appearance:none;appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}input,textarea,select{-webkit-appearance:none;}
 :root{
-  --cream:#F5F0E8;--page:#FDFAF5;--white:#FFFFFF;
-  --line:#E8E0D0;--dark:#2C2416;--text:#3D3326;
-  --dim:#9C8E7A;--faint:#DDD5C4;
-  --brown:#8B6C42;--brown2:#A07848;--brown-bg:#F5EDE0;
-  --sage:#5C7A5A;--sage-bg:#EBF2EA;
-  --rust:#9B4520;--rust-bg:#FAEAE3;
-  --gold:#B8872A;--gold-bg:#FDF6E3;
+  --cream:#F4EDE3;
+  --page:#FAF6F0;
+  --white:#FFFFFF;
+  --line:#E6D9CC;
+  --dark:#1E1610;
+  --text:#2E2418;
+  --dim:#8C7B6A;
+  --faint:#D9CFC3;
+  --brown:#8C5E38;
+  --brown2:#A8723F;
+  --brown-bg:#F5E8D8;
+  --sage:#6B8C6B;
+  --sage-bg:#EBF0E8;
+  --rust:#9C4020;
+  --rust-bg:#F8EAE3;
+  --gold:#B07E24;
+  --gold-bg:#FBF3E2;
 }
 /* ── DARK MODE ── */
 body.dark-mode{
-  --cream:#1A1510;--page:#211C16;--white:#2A2318;
-  --line:#3A3028;--dark:#F5EDE0;--text:#E8D8C4;
-  --dim:#8B7A65;--faint:#4A3D30;
-  --brown:#C4946A;--brown2:#D4A478;--brown-bg:#2E2218;
-  --sage:#7AAA78;--sage-bg:#1A2A1A;
-  --rust:#D4704A;--rust-bg:#2A1810;
-  --gold:#D4A830;--gold-bg:#2A2010;
+  --cream:#18120D;
+  --page:#201710;
+  --white:#2A1F16;
+  --line:#3D2E22;
+  --dark:#F0E6D6;
+  --text:#DDD0BC;
+  --dim:#9A8672;
+  --faint:#4A3828;
+  --brown:#C89060;
+  --brown2:#DDA870;
+  --brown-bg:#2E2016;
+  --sage:#7AA878;
+  --sage-bg:#192218;
+  --rust:#C86848;
+  --rust-bg:#281510;
+  --gold:#C89830;
+  --gold-bg:#221A08;
 }
-body.dark-mode .cover{background:linear-gradient(135deg,#3A2C1E 0%,#2C2010 45%,#1A1408 100%);}
-body.dark-mode .pomo{background:#1A1510;}
-body.dark-mode .focus-card{background:#1A1510;}
+body.dark-mode .cover{height:88px;background:linear-gradient(135deg,#C8A882 0%,#9A7040 45%,#6B4820 100%);display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;}
+body.dark-mode .pomo{background:#18120D;}
+body.dark-mode .focus-card{background:#18120D;}
 body.dark-mode .focus-card::before{background:radial-gradient(ellipse at 75% 25%,rgba(196,148,106,.15),transparent 58%);}
 body.dark-mode .setup-card{background:#211C16;border:1px solid #3A3028;}
 body.dark-mode .cel{background:#211C16;}
@@ -71,7 +91,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .si::placeholder{color:var(–faint);} .si:focus{border-color:var(–brown);}
 .sta{width:100%;background:var(–cream);border:1.5px solid var(–line);border-radius:10px;padding:11px 14px;font-family:‘DM Sans’,sans-serif;font-size:13px;color:var(–dark);outline:none;resize:none;min-height:70px;line-height:1.6;transition:border-color .15s;margin-bottom:11px;}
 .sta::placeholder{color:var(–faint);} .sta:focus{border-color:var(–brown);}
-.snext{-webkit-appearance:none;appearance:none;width:100%;background:#2C2416;color:#FFFFFF;border:none;border-radius:10px;padding:14px;font-family:‘DM Sans’,sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:block;margin-top:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.snext{-webkit-appearance:none;appearance:none;width:100%;background:#1E1610;color:#FFFFFF;border:none;border-radius:10px;padding:14px;font-family:‘DM Sans’,sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:block;margin-top:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .snext:hover{opacity:.85;}
 .sback{width:100%;background:none;border:none;color:var(–dim);font-family:‘DM Sans’,sans-serif;font-size:12px;font-weight:500;cursor:pointer;padding:10px;margin-top:4px;border-radius:8px;transition:color .15s;}
 .sback:hover{color:var(–brown);}
@@ -146,7 +166,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);
 .pn.on{color:var(–brown);border-bottom-color:var(–brown);font-weight:600;}
 
 /* ─── COVER ─── */
-.cover{height:88px;background:linear-gradient(135deg,#C4A882 0%,#9A7040 45%,#6B4E2A 100%);display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;}
+.cover{height:88px;background:linear-gradient(135deg,#C8A882 0%,#9A7040 45%,#6B4820 100%);display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:0 18px 12px;flex-shrink:0;position:relative;overflow:hidden;}
 .cover::before{content:’’;position:absolute;inset:0;background:radial-gradient(ellipse at 15% 50%,rgba(255,255,255,.07),transparent 55%);}
 .c-eye{position:absolute;top:11px;left:20px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .c-greeting{font-family:‘Cormorant Garamond’,serif;font-size:27px;font-weight:600;font-style:italic;color:rgba(255,255,255,.92);position:relative;z-index:1;}
@@ -358,7 +378,7 @@ margin:4px;transition:all .15s;cursor:default;
 .j-entry-text{font-family:‘Cormorant Garamond’,serif;font-size:14px;color:var(–text);line-height:1.6;font-style:italic;}
 
 /* ─── COACH ─── */
-.coach-hero{background:linear-gradient(135deg,#C4A882,#8B6C42);border-radius:12px;padding:16px;text-align:center;margin-bottom:12px;}
+.coach-hero{background:linear-gradient(135deg,#C8A882,#8C5E38);border-radius:12px;padding:16px;text-align:center;margin-bottom:12px;}
 .coach-av{font-size:32px;margin-bottom:5px;}
 .coach-name{font-family:‘Cormorant Garamond’,serif;font-size:18px;font-weight:700;color:white;margin-bottom:2px;}
 .coach-desc{font-size:11px;color:rgba(255,255,255,.7);line-height:1.5;}
@@ -1052,7 +1072,7 @@ margin:4px;transition:all .15s;cursor:default;
     <div class="card-title">How to Use Clear Mind Co.</div>
     <div class="card-sub">Take the interactive tour — it walks you through every section in under 3 minutes. Tap the button below and we'll guide you through everything step by step.</div>
     <!-- Interactive Tour Launch -->
-    <div style="background:linear-gradient(135deg,#C4A882,#8B6C42);border-radius:12px;padding:22px 20px;text-align:center;">
+    <div style="background:linear-gradient(135deg,#C8A882,#8C5E38);border-radius:12px;padding:22px 20px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">✦</div>
       <div style="font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700;color:white;margin-bottom:6px;">Take the Interactive Tour</div>
       <div style="font-size:12px;color:rgba(255,255,255,.75);margin-bottom:16px;line-height:1.6;">2 minutes. We'll walk you through every section — Home, Planner, Habits, Focus, Coach, and Money Mode. You'll know exactly what to tap and why.</div>
