@@ -68,6 +68,7 @@ Dark:  Espresso / Cognac / Cocoa / Bronze
 –hero-gradient-start: #C8A882;
 –hero-gradient-mid:   #9A7040;
 –hero-gradient-end:   #6B4820;
+–overlay-bg:         rgba(28,20,14,.72);
 
 /* LEGACY — kept for backward compat, direct hex only */
 –cream:    #F2EAE0;
@@ -136,6 +137,7 @@ body.dark-mode{
 –hero-gradient-start: #4A3020;
 –hero-gradient-mid:   #342010;
 –hero-gradient-end:   #1E1208;
+–overlay-bg:         rgba(14,10,6,.88);
 
 /* LEGACY — direct hex, no var() aliases in dark */
 –cream:    #140E09;
@@ -158,9 +160,6 @@ body.dark-mode{
 }
 
 body.dark-mode input,body.dark-mode textarea,body.dark-mode select{background:var(–bg-input)!important;color:var(–text-primary)!important;border-color:var(–border)!important;}
-
-.pg{display:none!important;}
-#pg-tasks{display:block!important;}
 
 }
 body{font-family:‘DM Sans’,sans-serif;background:var(–cream);color:var(–text);height:100vh;overflow:hidden;font-size:13px;transition:background .3s,color .3s;}
@@ -271,7 +270,7 @@ body{font-family:‘DM Sans’,sans-serif;background:var(–cream);color:var(–
 .scroll::-webkit-scrollbar-thumb{background:var(–faint);border-radius:3px;}
 
 /* ─── PAGES ─── */
-.pg{display:none;max-width:680px;}
+.pg{display:none;}
 .pg.on{display:block;animation:fade .18s ease;}
 @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
@@ -1530,85 +1529,240 @@ function finishSetup(){
     // If anything goes wrong, app is still visible and usable
     console.error('Setup finish error:',e);
   }
+
+
+function addDebtRow(name,bal,min,rate){
+  dRowN++;var id='dr'+dRowN;
+  var el=document.createElement('div');el.className='d-row';el.id=id;
+  el.innerHTML='<input class="d-inp" placeholder="e.g. Visa" value="'+(name||'')+'"><input class="d-inp" type="number" placeholder="1500" value="'+(bal||'')+'" min="0"><input class="d-inp" type="number" placeholder="45" value="'+(min||'')+'" min="0"><input class="d-inp" type="number" placeholder="19.9" value="'+(rate||'')+'" min="0" max="100"><button class="d-del" onclick="document.getElementById(\''+id+'\').remove()">✕</button>';
+  document.getElementById('debtInputRows').appendChild(el);
+}
+function buildSys(){
+  return 'You are the Clear Mind Coach inside Clear Mind Co.\n'+
+    'User: '+(U.name||'the user')+'\n'+
+    'Goal: '+(U.goal||'not set')+'\n'+
+    'Why: '+(U.why||'not set')+'\n'+
+    'Challenges: '+(U.challenges.length?U.challenges.join(', '):'not set')+'\n'+
+    'Push style: '+(U.push||'medium')+'\n\n'+
+    'Rules: Under 90 words. Short paragraphs. No lists. Reference their name/goal/challenges specifically. One actionable step in next 10 minutes. If professional help needed, gently suggest it. Never start with "I". Never say "Great question!" or "Absolutely!"';
 }
 
-function initApp(){
-  var now=new Date();
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var h=now.getHours();
-  var g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+function setMood(el,label){document.querySelectorAll('.mood-opt').forEach(function(m){m.classList.remove('on');});el.classList.add('on');var ml=document.getElementById('moodLbl');if(ml)ml.textContent=label;}
 
-  // Validate saved data quality — if name/goal look corrupted, clear them
-  if(U.name&&U.name.length<=1){U.name='';}
-  if(U.goal&&(U.goal===U.name||U.goal.length<=2)){U.goal='';}
-  if(U.why&&(U.why===U.name||U.why===U.goal)){U.why='';}
+// ─── POMODORO ───
+var pSec=1500,pRun=false,pInt=null;
+function tourNext(){
+  tourStep++;
+  if(tourStep>=TOUR_STEPS.length){endTour();return;}
+  renderTour();
+}
+function toggleCL(id){
+  var box=document.getElementById(id);var task=document.getElementById('t'+id);
+  if(!box||!task)return;
+  var done=box.classList.toggle('done');
+  task.classList.toggle('striked',done);
+  if(done)addGrowthScore(5);
+}
 
-  var el=document.getElementById('greeting');if(el)el.textContent=U.name?g+', '+U.name+'.':g+'.';
-  var cd=document.getElementById('coverDate');if(cd)cd.textContent=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate();
-  var jd=document.getElementById('jDate');if(jd)jd.textContent=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear();
-  var q=QS[Math.floor(Math.random()*QS.length)];
-  var qt=document.getElementById('qText');if(qt)qt.textContent=q.t;
-  var qa=document.getElementById('qAuthor');if(qa)qa.textContent='— '+q.a;
+// ─── COACH — Smart offline engine + optional API upgrade ───
+var chatHist=[];
 
-  // Update streak display
-  var stStr=document.getElementById('stStreak');if(stStr)stStr.textContent=currentStreak;
-  var stStrB=document.getElementById('stStreakB');if(stStrB)stStrB.style.width=Math.min(100,currentStreak*5)+'%';
+// Smart response engine — reads the actual message, gives real answers
+function addTasksToCalendar(){
+  var tasks=U.tasks.filter(function(t){return !t.done;});
+  if(!tasks.length){cel('📅','No tasks to add','Add tasks in Planner first.','Get started there.');return;}
+  var d=new Date();
+  var p=function(n){return n<10?'0'+n:''+n;};
+  var ds=d.getFullYear()+''+p(d.getMonth()+1)+''+p(d.getDate());
+  var desc=tasks.map(function(t){return(t.pri==='must'?'[MUST DO] ':'')+t.name;}).join('\n');
+  var ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:'+ds+'T080000\r\nDTEND:'+ds+'T090000\r\nSUMMARY:Clear Mind Co. Tasks\r\nDESCRIPTION:'+desc.replace(/\n/g,'\\n')+'\r\nEND:VEVENT\r\nEND:VCALENDAR';
+  var blob=new Blob([ics],{type:'text/calendar'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='tasks.ics';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  cel('📅','Added to calendar!','Open the file to add to your calendar.','Done — now go do it.');
+}
 
-  // Habits
-  try{if(!U.habits||!U.habits.length)U.habits=defaultHabits.map(function(h){return Object.assign({},h);});renderHabits();}catch(e){}
-  // Tasks
-  try{renderTasks();}catch(e){}
-  // Goals
-  try{if(U.goals&&U.goals.length){renderGoals();}else if(U.goal){U.goals=[{name:U.goal,why:U.why,pct:5,cat:'Personal',date:''}];renderGoals();}}catch(e){}
-  // Journal
-  try{if(U.jEntries&&U.jEntries.length)renderJ();}catch(e){}
-  // Journal prompts
-  var jpRow=document.getElementById('jpRow');
-  if(jpRow){
-    var prompts=U.goal?[
-      'How am I progressing toward: '+U.goal+'?',
-      'What\'s holding me back right now and what changes if I let it go?',
-      'What does my best self look like in 1 year?',
-      'What am I most proud of lately, even the small things?'
-    ]:[
-      'Where am I in life right now — honestly?',
-      'What\'s holding me back and what changes if I let it go?',
-      'What does my best self look like in 1 year?',
-      'What am I most proud of lately, even the small things?'
-    ];
-    jpRow.innerHTML='';
-    prompts.forEach(function(p){var d=document.createElement('div');d.className='jp';d.textContent=p;d.onclick=function(){var a=document.getElementById('jInput');if(a){a.value=p+'\n\n';a.focus();}};jpRow.appendChild(d);});
+
+function showTyping(){
+  var box=document.getElementById('chatMsgs');if(!box)return;
+  var div=document.createElement('div');div.className='msg coach';div.id='typing';
+  div.innerHTML='<div class="av avc">✨</div><div class="bubble"><div style="display:flex;gap:4px;padding:4px 2px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+function startTour(){
+  tourStep=0;tourActive=true;
+  document.getElementById('tourOverlay').classList.add('active');
+  renderTour();
+}
+function renderOrganized(data){
+  var result=document.getElementById('organizedResult');if(!result)return;
+  result.style.display='block';
+  var groups=[
+    {key:'must',label:'Do First — Today',desc:'Urgent & important',dotClass:'dot-must',color:'var(--rust)'},
+    {key:'should',label:'Should Do — Soon',desc:'Important, not urgent',dotClass:'dot-should',color:'var(--gold)'},
+    {key:'later',label:'Later — Ideas & Nice-to-haves',desc:'Can wait',dotClass:'dot-later',color:'var(--sage)'},
+  ];
+  var html='<div class="slbl">Organized — tap to check off</div>';
+  var uid=0;
+  groups.forEach(function(g){
+    var items=data[g.key]||[];if(!items.length)return;
+    html+='<div class="priority-group">';
+    html+='<div class="pg-header"><div class="pg-dot '+g.dotClass+'"></div><div class="pg-label">'+g.label+'</div><div class="pg-desc">'+g.desc+'</div></div>';
+    items.forEach(function(item){
+      var id='cli'+uid++;
+      html+='<div class="checklist-item"><div class="cl-check" id="'+id+'" onclick="toggleCL(\''+id+'\')"></div><div class="cl-body"><div class="cl-task" id="t'+id+'">'+item.task+'</div>';
+      if(item.steps&&item.steps.length){html+='<div class="cl-steps">';item.steps.forEach(function(s,si){html+='<div class="cl-step"><span class="cl-step-n">'+(si+1)+'.</span>'+s+'</div>';});html+='</div>';}
+      html+='</div></div>';
+    });
+    html+='</div>';
+  });
+  result.innerHTML=html;
+}
+function exportData(){
+  var toExport={
+    version:'cmc_v12',
+    exported:new Date().toISOString(),
+    U:U,
+    growthScore:growthScore,
+    streak:currentStreak,
+    lastDate:lastOpenDate
+  };
+  var blob=new Blob([JSON.stringify(toExport,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='ClearMindCo_backup_'+new Date().toISOString().split('T')[0]+'.json';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  cel('✦','Data exported.','Your backup file has downloaded. Transfer it to your other device and use Import Data to restore everything.','Keep this file somewhere safe — it\'s your complete backup.');
+}
+function getTodayStr(){
+  var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+function calcDebt(){
+  var rows=document.querySelectorAll('#debtInputRows .d-row');
+  var debts=[];
+  rows.forEach(function(r){
+    var ins=r.querySelectorAll('input');
+    var name=(ins[0]?ins[0].value:'').trim()||'Unnamed';
+    var bal=parseFloat(ins[1]?ins[1].value:0)||0;
+    var min=parseFloat(ins[2]?ins[2].value:0)||0;
+    var rate=parseFloat(ins[3]?ins[3].value:0)||0;
+    if(bal>0) debts.push({name:name,balance:bal,orig:bal,min:Math.max(min,1),rate:rate});
+  });
+  if(!debts.length){alert('Please add at least one debt first.');return;}
+
+  // Sort smallest to largest (snowball method)
+  debts.sort(function(a,b){return a.balance-b.balance;});
+
+  var extra=parseFloat((document.getElementById('extraPay')||{}).value)||0;
+  var totalOrig=debts.reduce(function(s,d){return s+d.orig;},0);
+
+  // Simulate snowball payoff month by month
+  var sims=debts.map(function(d){
+    return{name:d.name,balance:d.balance,orig:d.orig,min:d.min,rate:d.rate,paidMonth:null};
+  });
+
+  var month=0;
+  var totalInterest=0;
+  var freedPayment=0; // rolls over as debts paid
+  var chartLabels=['Start'];
+  var chartData=[Math.round(totalOrig)];
+
+  while(sims.some(function(d){return d.balance>0;}) && month<480){
+    month++;
+
+    // Accrue interest
+    sims.forEach(function(d){
+      if(d.balance>0){
+        var monthlyRate=d.rate/100/12;
+        var interest=d.balance*monthlyRate;
+        totalInterest+=interest;
+        d.balance+=interest;
+      }
+    });
+
+    // Make payments — minimums on all, extra on smallest unpaid
+    var extraApplied=false;
+    sims.forEach(function(d){
+      if(d.balance<=0) return;
+      var payment=d.min;
+      if(!extraApplied){
+        payment+=extra+freedPayment;
+        extraApplied=true;
+      }
+      d.balance=Math.max(0,d.balance-payment);
+      if(d.balance===0 && d.paidMonth===null){
+        d.paidMonth=month;
+        freedPayment+=d.min; // snowball: roll minimum into next debt
+      }
+    });
+
+    // Chart every 6 months
+    if(month%6===0||month===1){
+      var rem=sims.reduce(function(s,d){return s+Math.max(0,d.balance);},0);
+      chartLabels.push('Mo '+month);
+      chartData.push(Math.round(rem));
+    }
   }
-  // Coach
-  if(U.name){
-    var cn=document.getElementById('coachName');if(cn)cn.textContent=U.name+"'s Clear Mind Coach";
-    var om=document.getElementById('openMsg');
-    var goalLooksValid=U.goal&&U.goal.length>4&&U.goal!==U.name;
-    if(om&&goalLooksValid){om.textContent='Hey '+U.name+'. I know you\'re working toward '+U.goal+'. What\'s on your mind right now — let\'s figure out your next move.';}
-    else if(om&&U.name){om.textContent='Hey '+U.name+'. What\'s going on right now? Tell me what you\'re working on and we\'ll figure out your next move together.';}
-  }
-  // Growth widget
-  renderGrowth();
-  // New user banner
-  var banner=document.getElementById('newUserBanner');
-  if(banner){banner.style.display=bannerDismissed?'none':'flex';}
-  // Pre-fill 2 debt rows only if none exist
-  if(!document.querySelector('#debtInputRows .d-row')){addDebtRow('','','','');addDebtRow('','','','');}
-  // Save updated last date
-  lastOpenDate=getTodayStr();
-  saveData();
+
+  // Add final 0 point
+  chartLabels.push('Free!');
+  chartData.push(0);
+
+  var yrs=Math.floor(month/12);
+  var mos=month%12;
+  var timeStr=yrs>0?(yrs+'y'+(mos?' '+mos+'m':'')):(mos+'m');
+
+  // Show results section
+  var resultsEl=document.getElementById('debtResults');
+  if(resultsEl) resultsEl.style.display='block';
+
+  var sovT=document.getElementById('sovT');
+  var sovF=document.getElementById('sovF');
+  var sovS=document.getElementById('sovS');
+  var owPct=document.getElementById('owPct');
+  var owFill=document.getElementById('owFill');
+  var owSub=document.getElementById('owSub');
+
+  if(sovT) sovT.textContent='$'+Math.round(totalOrig).toLocaleString();
+  if(sovF) sovF.textContent=timeStr;
+  if(sovS) sovS.textContent='$'+Math.round(totalInterest).toLocaleString();
+  if(owPct) owPct.textContent='0%';
+  if(owFill) owFill.style.width='0%';
+  if(owSub) owSub.textContent='Debt free in '+timeStr+' using the snowball method.';
+
+  // Render debt list
+  var colors=['#8C5E38','#A8723F','#B8872A','#5E7D5C','#8E3A1C'];
+  var html='';
+  sims.forEach(function(d,i){
+    var pm=d.paidMonth;
+    var pStr=pm?(pm<=12?pm+'mo':(Math.floor(pm/12)+'y'+(pm%12?' '+pm%12+'m':''))):'—';
+    var col=colors[i%colors.length];
+    var paidPct=Math.round((1-(Math.max(0,d.balance)/d.orig))*100);
+    html+='<div class="debt-item" id="rd'+i+'">';
+    html+='<div class="di-top"><div class="di-name">'+d.name+'</div>';
+    html+='<span class="di-tag '+(i===0?'dt-a':'dt-q')+'">'+(i===0?'Attack Now':'Queue')+'</span></div>';
+    html+='<div class="di-info">$'+Math.round(d.orig).toLocaleString()+' balance · $'+d.min+'/mo min · '+d.rate+'% APR</div>';
+    html+='<div class="di-track"><div class="di-bar" id="db'+i+'" style="width:'+paidPct+'%;background:'+col+'"></div></div>';
+    html+='<div class="di-foot"><span class="di-eta">Paid off in '+pStr+'</span>';
+    html+='<button type="button" class="paid-btn" onclick="markPaid('+i+',''+d.name.replace(/'/g,"\'")+'','+Math.round(d.orig)+')">Mark Paid ✓</button></div>';
+    html+='</div>';
+  });
+  var debtList=document.getElementById('debtList');
+  if(debtList) debtList.innerHTML=html;
+
+  // Draw chart
+  try{drawDebtChart(chartLabels,chartData);}catch(e){console.warn('Chart error:',e);}
+
+  // Scroll to results
+  if(resultsEl) resultsEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// ─── NAV ───
-function goPage(page,tabId){
-  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
-  document.querySelectorAll('.pn').forEach(function(t){t.classList.remove('on');});
-  var pg=document.getElementById('pg-'+page);if(pg)pg.classList.add('on');
-  var tb=document.getElementById(tabId);if(tb)tb.classList.add('on');
-  // Update focus task display when switching to focus page
-  if(page==='focus')updateFocusTaskDisplay();
-}
+function openCal(){document.getElementById('calModal').classList.add('show');renderCal();}
 function swTab(t){
   document.querySelectorAll('.tb-tab').forEach(function(x){x.classList.remove('on');});
   var el=document.getElementById('tt-'+t);if(el)el.classList.add('on');
@@ -1617,307 +1771,42 @@ function swTab(t){
 }
 
 // ─── WEEK VIEW ───
-function openWeek(){
-  var modal=document.getElementById('weekModal');
-  if(!modal)return;
-  renderWeek();
-  modal.classList.add('show');
-}
-function closeWeek(){
-  var modal=document.getElementById('weekModal');
-  if(modal)modal.classList.remove('show');
-}
-function renderWeek(){
-  var grid=document.getElementById('weekGrid');if(!grid)return;
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var today=new Date();
-  // Find start of week (Sunday)
-  var start=new Date(today);
-  start.setDate(today.getDate()-today.getDay());
-  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  grid.innerHTML='';
-  for(var i=0;i<7;i++){
-    var d=new Date(start);
-    d.setDate(start.getDate()+i);
-    var key='week-'+d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
-    var isToday=(d.toDateString()===today.toDateString());
-    var saved=U.calNotes&&U.calNotes[key]||{};
-    var row=document.createElement('div');
-    row.style.cssText='padding:10px 0;border-bottom:1px solid var(--line);';
-    row.innerHTML=
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
-      +'<div style="width:32px;height:32px;border-radius:8px;background:'+(isToday?'var(--dark)':'var(--cream)')+';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">'
-      +'<div style="font-size:9px;font-weight:600;color:'+(isToday?'rgba(255,255,255,.6)':'var(--dim)')+';letter-spacing:.5px;">'+days[d.getDay()].slice(0,3).toUpperCase()+'</div>'
-      +'<div style="font-size:13px;font-weight:700;color:'+(isToday?'white':'var(--dark)')+';">'+d.getDate()+'</div>'
-      +'</div>'
-      +'<input class="cal-inp" placeholder="Goal or intention for '+days[d.getDay()]+'..." value="'+(saved.goal||'')+'" data-key="'+key+'" oninput="saveWeekEntry(this)" style="margin-bottom:0;flex:1;">'
-      +'</div>';
-    grid.appendChild(row);
-  }
-}
-function saveWeekEntry(inp){
-  var key=inp.getAttribute('data-key');
-  if(!key)return;
-  if(!U.calNotes)U.calNotes={};
-  if(inp.value.trim()){U.calNotes[key]={goal:inp.value.trim()};}
-  else{delete U.calNotes[key];}
-  saveData();
-}
+function callCoach(msg){
+  chatHist.push({role:'user',content:msg});
+  showTyping();
+  var btn=document.getElementById('sendBtn');if(btn)btn.disabled=true;
 
-// ─── DUMP TOGGLE ───
-function toggleDump(){
-  var exp=document.getElementById('dumpExpanded');
-  var icon=document.getElementById('dumpToggleIcon');
-  if(!exp)return;
-  var open=exp.style.display!=='none';
-  exp.style.display=open?'none':'block';
-  if(icon)icon.style.transform=open?'':'rotate(45deg)';
-}
+  // Check if user has provided an API key
+  var apiKey=(localStorage.getItem('cmc_api_key')||'').trim();
 
-// ─── BANNER ───
-function dismissBanner(){
-  var b=document.getElementById('newUserBanner');if(b)b.style.display='none';
-  try{localStorage.setItem('cmc_banner_dismissed','1');}catch(e){}
-}
-
-// ─── FOCUS TASK DISPLAY ───
-function updateFocusTaskDisplay(){
-  var first=U.tasks.find(function(t){return !t.done&&t.pri==='must'})||U.tasks.find(function(t){return !t.done;});
-  var disp=document.getElementById('focusTaskDisplay');
-  var name=document.getElementById('focusTaskName');
-  if(disp&&name){
-    if(first){disp.style.display='block';name.textContent=first.name;}
-    else{disp.style.display='none';}
-  }
-}
-
-// ─── LOCAL STORAGE ───
-var SAVE_KEY='cmc_data_v10';
-function saveData(){
-  try{
-    var toSave={
-      U:U,
-      growthScore:growthScore,
-      streak:currentStreak,
-      lastDate:lastOpenDate,
-      bannerDismissed:bannerDismissed
-    };
-    localStorage.setItem(SAVE_KEY,JSON.stringify(toSave));
-  }catch(e){}
-}
-function loadData(){
-  try{
-    var raw=localStorage.getItem(SAVE_KEY);
-    if(!raw)return false;
-    var saved=JSON.parse(raw);
-    if(saved.U){
-      // Restore user data
-      Object.assign(U,saved.U);
-      // Reset daily habit done state (new day = habits reset)
-      var today=getTodayStr();
-      if(saved.lastDate&&saved.lastDate!==today){
-        U.habits=U.habits.map(function(h){return Object.assign({},h,{done:false});});
-        U.tasks=U.tasks.map(function(t){return Object.assign({},t,{done:false});});
-        tDone=0;hDone=0;oneDone=false;
-      } else {
-        // Same day - restore done counts
-        tDone=U.tasks.filter(function(t){return t.done;}).length;
-        hDone=U.habits.filter(function(h){return h.done;}).length;
-        oneDone=saved.U.tasks&&saved.U.tasks.some(function(t){return t.done&&t.pri==='must';});
+  if(apiKey){
+    // Live AI response with their key
+    try{
+      var res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:250,system:buildSys(),messages:chatHist})
+      });
+      var data=await res.json();
+      if(data.content&&data.content[0]&&data.content[0].text){
+        var reply=data.content[0].text;
+        chatHist.push({role:'assistant',content:reply});
+        setTimeout(function(){removeTyping();addMsg('coach',reply);if(btn)btn.disabled=false;},600);
+        return;
       }
-    }
-    if(saved.growthScore)growthScore=saved.growthScore;
-    if(saved.bannerDismissed)bannerDismissed=saved.bannerDismissed;
-    // Streak logic
-    handleStreak(saved.lastDate,saved.streak||0);
-    return true;
-  }catch(e){return false;}
-}
-function getTodayStr(){
-  var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
-}
-function handleStreak(lastDate,savedStreak){
-  var today=getTodayStr();
-  if(!lastDate){currentStreak=1;lastOpenDate=today;return;}
-  var last=new Date(lastDate.replace(/-/g,'/'));
-  var now=new Date();
-  var diffDays=Math.round((now-last)/(1000*60*60*24));
-  if(diffDays===0){currentStreak=savedStreak||1;lastOpenDate=today;}
-  else if(diffDays===1){currentStreak=(savedStreak||0)+1;lastOpenDate=today;}
-  else{currentStreak=1;lastOpenDate=today;}
-}
-var currentStreak=1,lastOpenDate=getTodayStr(),bannerDismissed=false;
+    }catch(e){}
+  }
 
-
-var FLOWER_STAGES=[
-  {score:0,icon:'🌱',label:'Seed planted',desc:'Every journey begins with one small step.',level:'Stage 1'},
-  {score:20,icon:'🌿',label:'You\'re sprouting',desc:'Your consistency is showing. Keep going.',level:'Stage 2'},
-  {score:50,icon:'🌸',label:'Flowers forming',desc:'Real growth is happening. Stay the course.',level:'Stage 3'},
-  {score:100,icon:'🌺',label:'In full bloom',desc:'You\'re thriving. This is what it looks like.',level:'Stage 4'},
-  {score:180,icon:'🌳',label:'A mighty tree',desc:'Rooted, strong, unstoppable. You built this.',level:'Stage 5 — Legend'},
-];
-var KNIGHT_STAGES=[
-  {score:0,icon:'🗡️',label:'Training begins',desc:'Every champion started right here.',level:'Stage 1'},
-  {score:20,icon:'🛡️',label:'Shield earned',desc:'You\'ve proven you can take the hits. Keep going.',level:'Stage 2'},
-  {score:50,icon:'⚔️',label:'Knight in the making',desc:'Your consistency is building real strength.',level:'Stage 3'},
-  {score:100,icon:'🏆',label:'Champion rising',desc:'Most people quit here. You didn\'t.',level:'Stage 4'},
-  {score:180,icon:'👑',label:'Legend status',desc:'You\'ve built what others only dream about.',level:'Stage 5 — Legend'},
-];
-
-function renderGrowth(){
-  var stages=U.growthStyle==='knight'?KNIGHT_STAGES:FLOWER_STAGES;
-  var stage=stages[0];
-  for(var i=stages.length-1;i>=0;i--){if(growthScore>=stages[i].score){stage=stages[i];break;}}
-  var nextStage=null;
-  for(var j=0;j<stages.length;j++){if(stages[j].score>growthScore){nextStage=stages[j];break;}}
-  var pct=nextStage?Math.min(100,Math.round((growthScore-stage.score)/(nextStage.score-stage.score)*100)):100;
-  var scene=document.getElementById('gwScene');
-  if(scene){scene.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div style="font-size:56px;transition:all .5s ease;animation:growPulse 2s ease-in-out infinite">'+stage.icon+'</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:16px;font-weight:700;color:var(--dark)">'+stage.label+'</div></div>';}
-  var gwFill=document.getElementById('gwFill');if(gwFill)gwFill.style.width=Math.max(5,pct)+'%';
-  var gwStatus=document.getElementById('gwStatus');if(gwStatus)gwStatus.textContent=stage.desc+(nextStage?' · '+(nextStage.score-growthScore)+' points to next stage':'');
-  var gwLevel=document.getElementById('gwLevel');if(gwLevel)gwLevel.textContent=stage.level;
-  var gwTitle=document.getElementById('gwTitle');if(gwTitle)gwTitle.textContent=U.growthStyle==='knight'?'Your Knight\'s Quest':'Your Garden';
-}
-function addGrowthScore(pts){growthScore+=pts;renderGrowth();}
-// Pulse animation for icon
-var styleEl=document.createElement('style');
-styleEl.textContent='@keyframes growPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}';
-document.head.appendChild(styleEl);
-
-// ─── STATS ───
-function updateStats(){
-  var tot=U.tasks.length,done=U.tasks.filter(function(t){return t.done;}).length,left=Math.max(0,tot-done);
-  var stT=document.getElementById('stT');if(stT)stT.textContent=tot===0?'—':left+' left';
-  var stTB=document.getElementById('stTB');if(stTB)stTB.style.width=(tot>0?done/tot*100:0)+'%';
-  var stH=document.getElementById('stH');if(stH)stH.textContent=hDone+'/'+U.habits.length;
-  var stHB=document.getElementById('stHB');if(stHB)stHB.style.width=(U.habits.length>0?hDone/U.habits.length*100:0)+'%';
-  var first=U.tasks.find(function(t){return !t.done&&t.pri==='must'})||U.tasks.find(function(t){return !t.done;});
-  var fc=document.getElementById('fcTask');if(fc&&first&&!oneDone)fc.textContent=first.name;
+  // Smart offline fallback — always works
+  var reply=smartCoachReply(msg);
+  chatHist.push({role:'assistant',content:reply});
+  // Small delay so it feels real
+  setTimeout(function(){removeTyping();addMsg('coach',reply);if(btn)btn.disabled=false;},900);
 }
 
-// ─── ONE THING ───
-function completeOne(){
-  if(oneDone)return;oneDone=true;
-  var b=document.getElementById('fcBtn');if(b)b.classList.add('done');
-  var i=document.getElementById('fcIcon');if(i)i.textContent='✓';
-  var t=document.getElementById('fcText');if(t)t.textContent='Done. Keep going.';
-  addGrowthScore(10);
-  cel('✅','First task done.','That\'s how momentum starts. One thing at a time.','5-minute break — stand up, breathe.');
-}
-
-function renderTasks(){
-  var list=document.getElementById('taskList');if(!list)return;
-  if(!U.tasks.length){list.innerHTML='<div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No tasks yet. Add one below.</div>';updateStats();return;}
-  list.innerHTML='';
-  U.tasks.forEach(function(t,i){
-    var div=document.createElement('div');div.className='task-item'+(t.done?' done':'');
-    var pm={must:'<span class="t-pri p-must">Must Do — Do this first</span>',should:'<span class="t-pri p-should">Should Do</span>',bonus:'<span class="t-pri p-bonus">Bonus</span>'};
-    div.innerHTML=
-      '<div class="t-dot" onclick="checkTask('+i+')">✓</div>'+
-      '<div class="t-body" onclick="checkTask('+i+')"><div class="t-name">'+t.name+'</div></div>'+
-      pm[t.pri]+
-      '<button onclick="deleteTask('+i+')" style="background:none;border:none;color:var(--faint);font-size:13px;cursor:pointer;padding:0 4px;flex-shrink:0;transition:color .15s;" onmouseover="this.style.color=\'var(--rust)\'" onmouseout="this.style.color=\'var(--faint)\'">✕</button>';
-    list.appendChild(div);
-  });updateStats();
-}
-function checkTask(i){
-  var t=U.tasks[i];if(t.done)return;
-  t.done=true;tDone++;
-  addGrowthScore(10);
-  renderTasks();saveData();
-  var n=U.tasks.filter(function(x){return x.done;}).length;
-  var ms=[{e:'✅',t:'Task done.',m:'One down. Momentum is starting.',r:'Quick stretch — 2 minutes.'},{e:'🔥',t:'Two tasks done.',m:'You\'re in execution mode.',r:'Water. Keep going.'},{e:'🏆',t:'All tasks done.',m:'Successful day. Everything else is a bonus.',r:'Do something tonight that fills you up.'}];
-  var md=ms[Math.min(n-1,2)];cel(md.e,md.t,md.m,md.r);
-}
-function deleteTask(i){
-  if(U.tasks[i].done)tDone=Math.max(0,tDone-1);
-  U.tasks.splice(i,1);renderTasks();saveData();
-}
-function addTask(){
-  var inp=document.getElementById('taskInp'),pri=document.getElementById('taskPri');
-  if(!inp||(inp.value||'').trim()==='')return;
-  U.tasks.push({name:inp.value.trim(),done:false,pri:pri.value});
-  inp.value='';renderTasks();saveData();
-}
-
-// ─── HABITS ───
-function renderHabits(){
-  var list=document.getElementById('habitList');if(!list)return;
-  list.innerHTML='';
-  U.habits.forEach(function(h,i){
-    var div=document.createElement('div');div.className='habit'+(h.done?' done':'');
-    div.innerHTML='<div class="h-box" onclick="doHabit('+i+')">✓</div><span class="h-name" onclick="doHabit('+i+')">'+h.name+'</span><span class="h-streak">'+(h.streak?h.streak+' days':'')+'</span><button class="h-del" onclick="delHabit('+i+')" title="Remove">✕</button>';
-    list.appendChild(div);
-  });
-  updateStats();
-}
-function doHabit(i){
-  var h=U.habits[i];
-  if(h.done){h.done=false;hDone=Math.max(0,hDone-1);renderHabits();updateStats();saveData();return;}
-  h.done=true;h.streak=(h.streak||0)+1;hDone++;
-  renderHabits();updateStats();saveData();
-  addGrowthScore(5);
-  cel('✨',h.msg||'Habit done.',h.name+' — logged.',h.tip||'Keep the streak going.');
-  if(hDone===U.habits.length)setTimeout(function(){cel('🏆','Perfect habit day.','Every habit. You\'re becoming the person you said you wanted to be.','One full hour of anything you love — no guilt.');},400);
-}
-function addHabit(){
-  var inp=document.getElementById('habitInp');if(!inp||(inp.value||'').trim()==='')return;
-  U.habits.push({name:inp.value.trim(),streak:0,done:false,msg:'Habit logged.',tip:'Keep the streak alive.'});
-  inp.value='';renderHabits();saveData();
-}
-function delHabit(i){U.habits.splice(i,1);if(hDone>U.habits.length)hDone=U.habits.length;renderHabits();saveData();}
-function setMood(el,label){document.querySelectorAll('.mood-opt').forEach(function(m){m.classList.remove('on');});el.classList.add('on');var ml=document.getElementById('moodLbl');if(ml)ml.textContent=label;}
-
-// ─── POMODORO ───
-var pSec=1500,pRun=false,pInt=null;
-function togglePomo(){
-  var btn=document.getElementById('pomBtn'),ph=document.getElementById('pomPhase');
-  if(!pRun){pRun=true;if(btn)btn.textContent='Pause';if(ph)ph.textContent='Focus. You\'ve got this.';
-    pInt=setInterval(function(){pSec--;
-      if(pSec<=0){pSec=0;clearInterval(pInt);pRun=false;if(btn)btn.textContent='Start';if(ph)ph.textContent='Session complete';addGrowthScore(15);cel('✨','25 minutes done.','One full deep work session. That\'s real progress.','5-min break — walk, water, breathe.');}
-      var m=Math.floor(pSec/60),s=pSec%60,pt=document.getElementById('pomTime');if(pt)pt.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;},1000);
-  }else{clearInterval(pInt);pRun=false;if(btn)btn.textContent='Start';if(ph)ph.textContent='Paused.';}
-}
 function resetPomo(){clearInterval(pInt);pRun=false;pSec=1500;var pt=document.getElementById('pomTime'),ph=document.getElementById('pomPhase'),pb=document.getElementById('pomBtn');if(pt)pt.textContent='25:00';if(ph)ph.textContent='Ready when you are';if(pb)pb.textContent='Start';}
 
 // ─── GOALS ───
-function addGoal(){
-  var n=(document.getElementById('gName').value||'').trim();if(!n)return;
-  U.goals.push({name:n,why:(document.getElementById('gWhy').value||'').trim(),pct:0,cat:(document.getElementById('gCat').value||'Personal'),date:(document.getElementById('gDate').value||'')});
-  document.getElementById('gName').value='';document.getElementById('gWhy').value='';
-  renderGoals();cel('✨','Goal added.','It\'s in the system. Now let\'s build it.','Tell someone about this goal today — commitment gets real when spoken.');saveData();
-}
-function renderGoals(){
-  var list=document.getElementById('goalList');if(!list)return;
-  if(!U.goals.length){list.innerHTML='<div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No goals yet. Add one below.</div>';return;}
-  list.innerHTML='';
-  var cols={Business:'var(--brown)',Health:'var(--sage)',Money:'var(--gold)',Personal:'var(--rust)',Relationships:'#A07848',Content:'var(--sage)'};
-  U.goals.forEach(function(g,i){
-    var c=cols[g.cat]||'var(--brown)';
-    var div=document.createElement('div');div.className='goal-item';
-    div.innerHTML='<div class="g-top"><div class="g-name">'+g.name+'</div><div class="g-pct" id="gpct'+i+'">'+g.pct+'%</div></div>'+
-      '<div class="g-track"><div class="g-fill" id="gfill'+i+'" style="width:'+g.pct+'%;background:'+c+'"></div></div>'+
-      '<div class="g-meta">'+g.cat+(g.date?' · '+new Date(g.date+' ').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'')+'</div>'+
-      (g.why?'<div class="g-why">Why: '+g.why+'</div>':'')+
-      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="range" min="0" max="100" value="'+g.pct+'" style="flex:1;accent-color:var(--brown);cursor:pointer" oninput="updateG('+i+',this.value)"></div>';
-    list.appendChild(div);
-  });
-}
-function updateG(i,v){
-  U.goals[i].pct=parseInt(v);
-  var p=document.getElementById('gpct'+i);if(p)p.textContent=v+'%';
-  var f=document.getElementById('gfill'+i);if(f)f.style.width=v+'%';
-  saveData();
-  if(parseInt(v)===100){addGrowthScore(30);setTimeout(function(){cel('🏆','Goal reached!','You set it, you showed up, you crossed the finish line.','Celebrate tonight. You earned this one.');},150);}
-}
-
-// ─── JOURNAL ───
-function saveJ(){
-  var inp=document.getElementById('jInput');if(!inp||(inp.value||'').trim()==='')return;
-  var now=new Date();U.jEntries.unshift({text:inp.value.trim(),date:now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})});
-  inp.value='';renderJ();addGrowthScore(5);saveData();
-  cel('📓','Journal saved.','Writing is thinking. You just got clearer.','Read this again in 30 days.');
-}
 function renderJ(){
   var list=document.getElementById('jEntries'),wrap=document.getElementById('jEntriesWrap');
   if(!list||!wrap)return;if(!U.jEntries.length){wrap.style.display='none';return;}
@@ -1950,42 +1839,249 @@ async function organizeDump(){
   }
   if(btn){btn.disabled=false;btn.textContent='Organize by Priority ✦';}
 }
-function renderOrganized(data){
-  var result=document.getElementById('organizedResult');if(!result)return;
-  result.style.display='block';
-  var groups=[
-    {key:'must',label:'Do First — Today',desc:'Urgent & important',dotClass:'dot-must',color:'var(--rust)'},
-    {key:'should',label:'Should Do — Soon',desc:'Important, not urgent',dotClass:'dot-should',color:'var(--gold)'},
-    {key:'later',label:'Later — Ideas & Nice-to-haves',desc:'Can wait',dotClass:'dot-later',color:'var(--sage)'},
-  ];
-  var html='<div class="slbl">Organized — tap to check off</div>';
-  var uid=0;
-  groups.forEach(function(g){
-    var items=data[g.key]||[];if(!items.length)return;
-    html+='<div class="priority-group">';
-    html+='<div class="pg-header"><div class="pg-dot '+g.dotClass+'"></div><div class="pg-label">'+g.label+'</div><div class="pg-desc">'+g.desc+'</div></div>';
-    items.forEach(function(item){
-      var id='cli'+uid++;
-      html+='<div class="checklist-item"><div class="cl-check" id="'+id+'" onclick="toggleCL(\''+id+'\')"></div><div class="cl-body"><div class="cl-task" id="t'+id+'">'+item.task+'</div>';
-      if(item.steps&&item.steps.length){html+='<div class="cl-steps">';item.steps.forEach(function(s,si){html+='<div class="cl-step"><span class="cl-step-n">'+(si+1)+'.</span>'+s+'</div>';});html+='</div>';}
-      html+='</div></div>';
+function addGrowthScore(pts){growthScore+=pts;renderGrowth();}
+// Pulse animation for icon
+var styleEl=document.createElement('style');
+styleEl.textContent='@keyframes growPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}';
+document.head.appendChild(styleEl);
+
+// ─── STATS ───
+function renderTour(){
+  var step=TOUR_STEPS[tourStep];
+  if(!step){endTour();return;}
+  // Navigate page
+  goPage(step.page,step.navId);
+  // Update content
+  document.getElementById('tourIcon').textContent=step.icon||'✦';
+  document.getElementById('tourTitle').textContent=step.title;
+  document.getElementById('tourBody').innerHTML=step.body.replace(/\n/g,'<br>');
+  document.getElementById('tourStepLabel').textContent='STEP '+(tourStep+1)+' OF '+TOUR_STEPS.length;
+  var nb=document.getElementById('tourNextBtn');
+  if(nb)nb.textContent=step.isLast?'Done — start using it ✓':'Next →';
+  // Dots
+  var de=document.getElementById('tourDots');
+  if(de){
+    de.innerHTML='';
+    TOUR_STEPS.forEach(function(_,i){
+      var d=document.createElement('div');
+      d.className='tour-dot'+(i===tourStep?' on':'');
+      de.appendChild(d);
     });
-    html+='</div>';
+  }
+  // Always dim backdrop, always show card at bottom — no positioning math
+  var backdrop=document.getElementById('tourBackdrop');
+  var card=document.getElementById('tourCard');
+  var highlight=document.getElementById('tourHighlight');
+  if(backdrop)backdrop.classList.add('dim');
+  if(highlight)highlight.style.display='none';
+  if(card)card.style.display='block';
+}
+function closeCal(){document.getElementById('calModal').classList.remove('show');document.getElementById('calEntryArea').style.display='none';calSelectedDay=null;}
+function completeOne(){
+  if(oneDone)return;oneDone=true;
+  var b=document.getElementById('fcBtn');if(b)b.classList.add('done');
+  var i=document.getElementById('fcIcon');if(i)i.textContent='✓';
+  var t=document.getElementById('fcText');if(t)t.textContent='Done. Keep going.';
+  addGrowthScore(10);
+  cel('✅','First task done.','That\'s how momentum starts. One thing at a time.','5-minute break — stand up, breathe.');
+}
+
+function toggleDark(){
+  isDark=!isDark;
+  document.body.classList.toggle('dark-mode',isDark);
+  updateThemePill();
+  try{localStorage.setItem('cmc_dark',isDark?'1':'0');}catch(e){}
+}
+function drawDebtChart(labels,data){
+  var canvas=document.getElementById('debtChart');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var W=canvas.offsetWidth||300;var H=160;
+  var dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+  var pad={t:10,r:10,b:30,l:55};
+  var gW=W-pad.l-pad.r;var gH=H-pad.t-pad.b;
+  var max=Math.max.apply(null,data)||1;
+  ctx.clearRect(0,0,W,H);
+  for(var g=0;g<=4;g++){
+    var gy=pad.t+gH*(1-g/4);
+    ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+gW,gy);ctx.stroke();
+    ctx.fillStyle='#9C8E7A';ctx.font='9px sans-serif';ctx.textAlign='right';
+    var v=max*g/4;
+    ctx.fillText(v>=1000?('$'+(v/1000).toFixed(0)+'k'):('$'+Math.round(v)),pad.l-4,gy+3);
+  }
+  if(data.length>1){
+    ctx.beginPath();
+    var ix=function(i){return pad.l+gW*i/(data.length-1);};
+    var iy=function(i){return pad.t+gH*(1-data[i]/max);};
+    ctx.moveTo(ix(0),iy(0));
+    for(var i=1;i<data.length;i++){
+      var cx=(ix(i-1)+ix(i))/2;
+      ctx.bezierCurveTo(cx,iy(i-1),cx,iy(i),ix(i),iy(i));
+    }
+    ctx.lineTo(ix(data.length-1),pad.t+gH);ctx.lineTo(pad.l,pad.t+gH);
+    ctx.closePath();ctx.fillStyle='rgba(140,94,56,0.1)';ctx.fill();
+    ctx.beginPath();ctx.moveTo(ix(0),iy(0));
+    for(var i=1;i<data.length;i++){
+      var cx=(ix(i-1)+ix(i))/2;
+      ctx.bezierCurveTo(cx,iy(i-1),cx,iy(i),ix(i),iy(i));
+    }
+    ctx.strokeStyle='#8C5E38';ctx.lineWidth=2;ctx.stroke();
+    for(var i=0;i<data.length;i++){
+      ctx.beginPath();ctx.arc(ix(i),iy(i),3,0,Math.PI*2);
+      ctx.fillStyle='#8C5E38';ctx.fill();
+    }
+  }
+  var step=Math.max(1,Math.floor((labels.length-1)/4));
+  ctx.fillStyle='#9C8E7A';ctx.font='9px sans-serif';ctx.textAlign='center';
+  for(var i=0;i<labels.length;i+=step){
+    ctx.fillText(labels[i],ix(i),H-6);
+  }
+}
+
+// ─── CALENDAR EXPORT ───
+function renderGoals(){
+  var list=document.getElementById('goalList');if(!list)return;
+  if(!U.goals.length){list.innerHTML='<div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No goals yet. Add one below.</div>';return;}
+  list.innerHTML='';
+  var cols={Business:'var(--brown)',Health:'var(--sage)',Money:'var(--gold)',Personal:'var(--rust)',Relationships:'#A07848',Content:'var(--sage)'};
+  U.goals.forEach(function(g,i){
+    var c=cols[g.cat]||'var(--brown)';
+    var div=document.createElement('div');div.className='goal-item';
+    div.innerHTML='<div class="g-top"><div class="g-name">'+g.name+'</div><div class="g-pct" id="gpct'+i+'">'+g.pct+'%</div></div>'+
+      '<div class="g-track"><div class="g-fill" id="gfill'+i+'" style="width:'+g.pct+'%;background:'+c+'"></div></div>'+
+      '<div class="g-meta">'+g.cat+(g.date?' · '+new Date(g.date+' ').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'')+'</div>'+
+      (g.why?'<div class="g-why">Why: '+g.why+'</div>':'')+
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="range" min="0" max="100" value="'+g.pct+'" style="flex:1;accent-color:var(--brown);cursor:pointer" oninput="updateG('+i+',this.value)"></div>';
+    list.appendChild(div);
   });
-  result.innerHTML=html;
 }
-function toggleCL(id){
-  var box=document.getElementById(id);var task=document.getElementById('t'+id);
-  if(!box||!task)return;
-  var done=box.classList.toggle('done');
-  task.classList.toggle('striked',done);
-  if(done)addGrowthScore(5);
+function addHabit(){
+  var inp=document.getElementById('habitInp');if(!inp||(inp.value||'').trim()==='')return;
+  U.habits.push({name:inp.value.trim(),streak:0,done:false,msg:'Habit logged.',tip:'Keep the streak alive.'});
+  inp.value='';renderHabits();saveData();
+}
+function openWeek(){
+  var modal=document.getElementById('weekModal');
+  if(!modal)return;
+  renderWeek();
+  modal.classList.add('show');
+}
+function toggleDump(){
+  var exp=document.getElementById('dumpExpanded');
+  var icon=document.getElementById('dumpToggleIcon');
+  if(!exp)return;
+  var open=exp.style.display!=='none';
+  exp.style.display=open?'none':'block';
+  if(icon)icon.style.transform=open?'':'rotate(45deg)';
 }
 
-// ─── COACH — Smart offline engine + optional API upgrade ───
-var chatHist=[];
+// ─── BANNER ───
+function checkTask(i){
+  var t=U.tasks[i];if(t.done)return;
+  t.done=true;tDone++;
+  addGrowthScore(10);
+  renderTasks();saveData();
+  var n=U.tasks.filter(function(x){return x.done;}).length;
+  var ms=[{e:'✅',t:'Task done.',m:'One down. Momentum is starting.',r:'Quick stretch — 2 minutes.'},{e:'🔥',t:'Two tasks done.',m:'You\'re in execution mode.',r:'Water. Keep going.'},{e:'🏆',t:'All tasks done.',m:'Successful day. Everything else is a bonus.',r:'Do something tonight that fills you up.'}];
+  var md=ms[Math.min(n-1,2)];cel(md.e,md.t,md.m,md.r);
+}
+function togglePomo(){
+  var btn=document.getElementById('pomBtn'),ph=document.getElementById('pomPhase');
+  if(!pRun){pRun=true;if(btn)btn.textContent='Pause';if(ph)ph.textContent='Focus. You\'ve got this.';
+    pInt=setInterval(function(){pSec--;
+      if(pSec<=0){pSec=0;clearInterval(pInt);pRun=false;if(btn)btn.textContent='Start';if(ph)ph.textContent='Session complete';addGrowthScore(15);cel('✨','25 minutes done.','One full deep work session. That\'s real progress.','5-min break — walk, water, breathe.');}
+      var m=Math.floor(pSec/60),s=pSec%60,pt=document.getElementById('pomTime');if(pt)pt.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;},1000);
+  }else{clearInterval(pInt);pRun=false;if(btn)btn.textContent='Start';if(ph)ph.textContent='Paused.';}
+}
+function updateThemePill(){
+  var lp=document.getElementById('lightPill');
+  var dp=document.getElementById('darkPill');
+  if(!lp||!dp)return;
+  if(isDark){
+    lp.style.background='transparent';lp.style.color='var(--dim)';
+    dp.style.background='var(--dark)';dp.style.color='var(--white)';
+  }else{
+    lp.style.background='var(--dark)';lp.style.color='var(--white)';
+    dp.style.background='transparent';dp.style.color='var(--dim)';
+  }
+}
+function closeWeek(){
+  var modal=document.getElementById('weekModal');
+  if(modal)modal.classList.remove('show');
+}
+function handleStreak(lastDate,savedStreak){
+  var today=getTodayStr();
+  if(!lastDate){currentStreak=1;lastOpenDate=today;return;}
+  var last=new Date(lastDate.replace(/-/g,'/'));
+  var now=new Date();
+  var diffDays=Math.round((now-last)/(1000*60*60*24));
+  if(diffDays===0){currentStreak=savedStreak||1;lastOpenDate=today;}
+  else if(diffDays===1){currentStreak=(savedStreak||0)+1;lastOpenDate=today;}
+  else{currentStreak=1;lastOpenDate=today;}
+}
+var currentStreak=1,lastOpenDate=getTodayStr(),bannerDismissed=false;
 
-// Smart response engine — reads the actual message, gives real answers
+
+var FLOWER_STAGES=[
+  {score:0,icon:'🌱',label:'Seed planted',desc:'Every journey begins with one small step.',level:'Stage 1'},
+  {score:20,icon:'🌿',label:'You\'re sprouting',desc:'Your consistency is showing. Keep going.',level:'Stage 2'},
+  {score:50,icon:'🌸',label:'Flowers forming',desc:'Real growth is happening. Stay the course.',level:'Stage 3'},
+  {score:100,icon:'🌺',label:'In full bloom',desc:'You\'re thriving. This is what it looks like.',level:'Stage 4'},
+  {score:180,icon:'🌳',label:'A mighty tree',desc:'Rooted, strong, unstoppable. You built this.',level:'Stage 5 — Legend'},
+];
+var KNIGHT_STAGES=[
+  {score:0,icon:'🗡️',label:'Training begins',desc:'Every champion started right here.',level:'Stage 1'},
+  {score:20,icon:'🛡️',label:'Shield earned',desc:'You\'ve proven you can take the hits. Keep going.',level:'Stage 2'},
+  {score:50,icon:'⚔️',label:'Knight in the making',desc:'Your consistency is building real strength.',level:'Stage 3'},
+  {score:100,icon:'🏆',label:'Champion rising',desc:'Most people quit here. You didn\'t.',level:'Stage 4'},
+  {score:180,icon:'👑',label:'Legend status',desc:'You\'ve built what others only dream about.',level:'Stage 5 — Legend'},
+];
+
+function dismissBanner(){
+  var b=document.getElementById('newUserBanner');if(b)b.style.display='none';
+  try{localStorage.setItem('cmc_banner_dismissed','1');}catch(e){}
+}
+
+// ─── FOCUS TASK DISPLAY ───
+function goPage(page,tabId){
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.pn').forEach(function(t){t.classList.remove('on');});
+  var pg=document.getElementById('pg-'+page);if(pg)pg.classList.add('on');
+  var tb=document.getElementById(tabId);if(tb)tb.classList.add('on');
+  // Update focus task display when switching to focus page
+  if(page==='focus')updateFocusTaskDisplay();
+}
+function renderTasks(){
+  var list=document.getElementById('taskList');if(!list)return;
+  if(!U.tasks.length){list.innerHTML='<div style="padding:14px 0;text-align:center;color:var(--dim);font-size:12px">No tasks yet. Add one below.</div>';updateStats();return;}
+  list.innerHTML='';
+  U.tasks.forEach(function(t,i){
+    var div=document.createElement('div');div.className='task-item'+(t.done?' done':'');
+    var pm={must:'<span class="t-pri p-must">Must Do — Do this first</span>',should:'<span class="t-pri p-should">Should Do</span>',bonus:'<span class="t-pri p-bonus">Bonus</span>'};
+    div.innerHTML=
+      '<div class="t-dot" onclick="checkTask('+i+')">✓</div>'+
+      '<div class="t-body" onclick="checkTask('+i+')"><div class="t-name">'+t.name+'</div></div>'+
+      pm[t.pri]+
+      '<button onclick="deleteTask('+i+')" style="background:none;border:none;color:var(--faint);font-size:13px;cursor:pointer;padding:0 4px;flex-shrink:0;transition:color .15s;" onmouseover="this.style.color=\'var(--rust)\'" onmouseout="this.style.color=\'var(--faint)\'">✕</button>';
+    list.appendChild(div);
+  });updateStats();
+}
+function updateFocusTaskDisplay(){
+  var first=U.tasks.find(function(t){return !t.done&&t.pri==='must'})||U.tasks.find(function(t){return !t.done;});
+  var disp=document.getElementById('focusTaskDisplay');
+  var name=document.getElementById('focusTaskName');
+  if(disp&&name){
+    if(first){disp.style.display='block';name.textContent=first.name;}
+    else{disp.style.display='none';}
+  }
+}
+
+// ─── LOCAL STORAGE ───
+var SAVE_KEY='cmc_v12';
 function smartCoachReply(msg){
   var m=msg.toLowerCase().trim();
   var name=U.name||'';
@@ -2229,181 +2325,46 @@ function smartCoachReply(msg){
 }
 
 
-function buildSys(){
-  return 'You are the Clear Mind Coach inside Clear Mind Co.\n'+
-    'User: '+(U.name||'the user')+'\n'+
-    'Goal: '+(U.goal||'not set')+'\n'+
-    'Why: '+(U.why||'not set')+'\n'+
-    'Challenges: '+(U.challenges.length?U.challenges.join(', '):'not set')+'\n'+
-    'Push style: '+(U.push||'medium')+'\n\n'+
-    'Rules: Under 90 words. Short paragraphs. No lists. Reference their name/goal/challenges specifically. One actionable step in next 10 minutes. If professional help needed, gently suggest it. Never start with "I". Never say "Great question!" or "Absolutely!"';
+function importData(){
+  var f=document.getElementById('importFile');if(f)f.click();
+}
+function addTask(){
+  var inp=document.getElementById('taskInp'),pri=document.getElementById('taskPri');
+  if(!inp||(inp.value||'').trim()==='')return;
+  U.tasks.push({name:inp.value.trim(),done:false,pri:pri.value});
+  inp.value='';renderTasks();saveData();
 }
 
-function addMsg(role,text){
-  var box=document.getElementById('chatMsgs');if(!box)return;
-  var div=document.createElement('div');div.className='msg '+role;
-  var av=document.createElement('div');av.className='av '+(role==='coach'?'avc':'avu');av.textContent=role==='coach'?'✨':'You';
-  var bubble=document.createElement('div');bubble.className='bubble';bubble.innerHTML=text.replace(/\n/g,'<br>');
-  div.appendChild(av);div.appendChild(bubble);box.appendChild(div);box.scrollTop=box.scrollHeight;
-}
-function showTyping(){
-  var box=document.getElementById('chatMsgs');if(!box)return;
-  var div=document.createElement('div');div.className='msg coach';div.id='typing';
-  div.innerHTML='<div class="av avc">✨</div><div class="bubble"><div style="display:flex;gap:4px;padding:4px 2px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';
-  box.appendChild(div);box.scrollTop=box.scrollHeight;
-}
-function removeTyping(){var t=document.getElementById('typing');if(t)t.remove();}
-
-async function callCoach(msg){
-  chatHist.push({role:'user',content:msg});
-  showTyping();
-  var btn=document.getElementById('sendBtn');if(btn)btn.disabled=true;
-
-  // Check if user has provided an API key
-  var apiKey=(localStorage.getItem('cmc_api_key')||'').trim();
-
-  if(apiKey){
-    // Live AI response with their key
-    try{
-      var res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:250,system:buildSys(),messages:chatHist})
-      });
-      var data=await res.json();
-      if(data.content&&data.content[0]&&data.content[0].text){
-        var reply=data.content[0].text;
-        chatHist.push({role:'assistant',content:reply});
-        setTimeout(function(){removeTyping();addMsg('coach',reply);if(btn)btn.disabled=false;},600);
-        return;
-      }
-    }catch(e){}
-  }
-
-  // Smart offline fallback — always works
-  var reply=smartCoachReply(msg);
-  chatHist.push({role:'assistant',content:reply});
-  // Small delay so it feels real
-  setTimeout(function(){removeTyping();addMsg('coach',reply);if(btn)btn.disabled=false;},900);
-}
-
-function sendMsg(){var inp=document.getElementById('chatInp');if(!inp||(inp.value||'').trim()==='')return;var msg=inp.value.trim();inp.value='';addMsg('user',msg);callCoach(msg);}
+// ─── HABITS ───
 function sendQ(q){goPage('coach','pn-coach');addMsg('user',q);callCoach(q);}
-function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
-
-// ─── CALENDAR ───
-var calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelectedDay=null;
-var CAL_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var CAL_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-function openCal(){document.getElementById('calModal').classList.add('show');renderCal();}
-function closeCal(){document.getElementById('calModal').classList.remove('show');document.getElementById('calEntryArea').style.display='none';calSelectedDay=null;}
-function calNav(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCal();}
-function renderCal(){
-  var title=document.getElementById('calTitle');if(title)title.textContent=CAL_MONTHS[calMonth]+' '+calYear;
-  var grid=document.getElementById('calGrid');if(!grid)return;
-  grid.innerHTML='';
-  CAL_DAYS.forEach(function(d){var el=document.createElement('div');el.className='cal-day-hdr';el.textContent=d;grid.appendChild(el);});
-  var first=new Date(calYear,calMonth,1).getDay();
-  var daysIn=new Date(calYear,calMonth+1,0).getDate();
-  var today=new Date();
-  for(var i=0;i<first;i++){var em=document.createElement('div');em.className='cal-day empty';em.textContent='.';grid.appendChild(em);}
-  for(var d=1;d<=daysIn;d++){
-    var el=document.createElement('div');el.className='cal-day';
-    var key=calYear+'-'+calMonth+'-'+d;
-    if(today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d)el.classList.add('today');
-    if(U.calNotes[key])el.classList.add('has-note');
-    el.innerHTML='<span>'+d+'</span>';
-    (function(day,k){el.onclick=function(){calSelectedDay=day;calSelectedKey=k;showCalEntry(day,k);};;})(d,key);
-    grid.appendChild(el);
-  }
-}
-var calSelectedKey='';
-function showCalEntry(day,key){
-  var area=document.getElementById('calEntryArea');if(!area)return;
-  area.style.display='block';
-  var t=document.getElementById('calEntryTitle');if(t)t.textContent=CAL_MONTHS[calMonth]+' '+day+', '+calYear;
-  var n=U.calNotes[key]||{};
-  var gi=document.getElementById('calGoalInp');if(gi)gi.value=n.goal||'';
-  var ni=document.getElementById('calNoteInp');if(ni)ni.value=n.note||'';
-}
-function saveCalEntry(){
-  if(!calSelectedKey)return;
-  var g=(document.getElementById('calGoalInp').value||'').trim();
-  var n=(document.getElementById('calNoteInp').value||'').trim();
-  if(g||n){U.calNotes[calSelectedKey]={goal:g,note:n};}
-  else{delete U.calNotes[calSelectedKey];}
-  renderCal();showCalEntry(calSelectedDay,calSelectedKey);saveData();
-  cel('📅','Day planned.','You set an intention for that day. That\'s how clarity is built.','Review it the morning of — and make it happen.');
-}
-
-// ─── BOOTSTRAP — check localStorage on load ───
-(function(){
+function tourSkip(){endTour();}
+function loadData(){
   try{
-    var hasData=loadData();
-    if(hasData&&U.name){
-      var modal=document.getElementById('setup');
-      if(modal)modal.classList.add('gone');
-      initApp();
-      return;
+    var raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return false;
+    var saved=JSON.parse(raw);
+    if(saved.U){
+      // Restore user data
+      Object.assign(U,saved.U);
+      // Reset daily habit done state (new day = habits reset)
+      var today=getTodayStr();
+      if(saved.lastDate&&saved.lastDate!==today){
+        U.habits=U.habits.map(function(h){return Object.assign({},h,{done:false});});
+        U.tasks=U.tasks.map(function(t){return Object.assign({},t,{done:false});});
+        tDone=0;hDone=0;oneDone=false;
+      } else {
+        // Same day - restore done counts
+        tDone=U.tasks.filter(function(t){return t.done;}).length;
+        hDone=U.habits.filter(function(h){return h.done;}).length;
+        oneDone=saved.U.tasks&&saved.U.tasks.some(function(t){return t.done&&t.pri==='must';});
+      }
     }
-  }catch(e){
-    // Something went wrong with saved data — clear it and start fresh
-    try{localStorage.removeItem(SAVE_KEY);}catch(e2){}
-    // Reset user object
-    U={name:'',goal:'',why:'',challenges:[],push:'medium',growthStyle:'flower',tasks:[],goals:[],jEntries:[],habits:[],calNotes:{}};
-    growthScore=0;currentStreak=1;
-  }
-  // Show setup fresh — make sure step 0 is visible
-  var s=document.getElementById('s0');if(s)s.classList.add('on');
-})();
-
-// ─── DEBT ───
-var dRowN=0,debtChart=null,origT=0,paidN=0;
-function addDebtRow(name,bal,min,rate){
-  dRowN++;var id='dr'+dRowN;
-  var el=document.createElement('div');el.className='d-row';el.id=id;
-  el.innerHTML='<input class="d-inp" placeholder="e.g. Visa" value="'+(name||'')+'"><input class="d-inp" type="number" placeholder="1500" value="'+(bal||'')+'" min="0"><input class="d-inp" type="number" placeholder="45" value="'+(min||'')+'" min="0"><input class="d-inp" type="number" placeholder="19.9" value="'+(rate||'')+'" min="0" max="100"><button class="d-del" onclick="document.getElementById(\''+id+'\').remove()">✕</button>';
-  document.getElementById('debtInputRows').appendChild(el);
-}
-function calcDebt(){
-  var rows=document.querySelectorAll('#debtInputRows .d-row'),debts=[];
-  rows.forEach(function(r){var ins=r.querySelectorAll('input');var b=parseFloat(ins[1].value)||0;if(b>0)debts.push({name:(ins[0].value||'').trim()||'Unnamed',balance:b,orig:b,min:parseFloat(ins[2].value)||0,rate:parseFloat(ins[3].value)||0});});
-  if(!debts.length)return;
-  debts.sort(function(a,b){return a.balance-b.balance;});
-  origT=debts.reduce(function(s,d){return s+d.balance;},0);
-  var extra=parseFloat(document.getElementById('extraPay').value)||0;
-  var sims=debts.map(function(d){return{balance:d.balance,orig:d.orig,min:d.min,rate:d.rate,name:d.name};});
-  var months=0,interest=0,freed=0,payAt=debts.map(function(){return null;});
-  var cL=['Now'],cD=[Math.round(origT)];
-  while(sims.some(function(d){return d.balance>0;})&&months<360){
-    months++;var avail=extra+freed,used=false;
-    sims.forEach(function(d){if(d.balance>0){var ii=d.balance*(d.rate/100/12);interest+=ii;d.balance+=ii;}});
-    sims.forEach(function(d,i){if(d.balance<=0)return;var pay=d.min+(used?0:avail);used=true;d.balance=Math.max(0,d.balance-pay);if(d.balance===0&&payAt[i]===null){payAt[i]=months;freed+=d.min;}});
-    if(months<=6||months%3===0){var rem=sims.reduce(function(s,d){return s+Math.max(0,d.balance);},0);cL.push('Mo'+months);cD.push(Math.round(rem));}
-  }
-  if(months>=360)months=360;
-  document.getElementById('debtResults').style.display='block';
-  var yrs=Math.floor(months/12),mos=months%12,tStr=yrs>0?yrs+'y'+(mos?' '+mos+'m':''):mos+'m';
-  document.getElementById('sovT').textContent='$'+origT.toLocaleString();
-  document.getElementById('sovF').textContent=tStr;
-  document.getElementById('sovS').textContent='$'+Math.round(interest).toLocaleString();
-  document.getElementById('owSub').textContent='Debt free in '+tStr+' using the snowball.';
-  document.getElementById('owPct').textContent='0%';
-  document.getElementById('owFill').style.width='0%';
-  var cols=['#8B6C42','#A07848','#B8872A','#5C7A5A','#9B4520'],html='';
-  debts.forEach(function(d,i){
-    var pM=payAt[i],pStr=pM?(pM<=12?pM+'mo':(Math.floor(pM/12)+'y'+(pM%12?' '+pM%12+'m':''))):' — ';
-    var c=cols[i%cols.length];
-    html+='<div class="debt-item" id="rd'+i+'"><div class="di-top"><div class="di-name">'+d.name+'</div><span class="di-tag '+(i===0?'dt-a':'dt-q')+'">'+(i===0?'Attack Now — Step 3':'Queue — Steps 1 & 2')+'</span></div>';
-    html+='<div class="di-info">$'+d.orig.toLocaleString()+' balance &nbsp;·&nbsp; $'+d.min+'/mo minimum &nbsp;·&nbsp; '+d.rate+'% APR</div>';
-    html+='<div class="di-track"><div class="di-bar" id="db'+i+'" style="width:100%;background:'+c+'"></div></div>';
-    html+='<div class="di-foot"><span class="di-eta">Gone in '+pStr+'</span><button class="paid-btn" onclick="markPaid('+i+',\''+d.name+'\','+d.orig+')">Mark Paid ✓</button></div></div>';
-  });
-  document.getElementById('debtList').innerHTML=html;
-  var ctx=document.getElementById('debtChart');
-  if(debtChart)debtChart.destroy();
-  debtChart=new Chart(ctx,{type:'line',data:{labels:cL,datasets:[{data:cD,borderColor:'#8B6C42',backgroundColor:'rgba(139,108,66,0.07)',borderWidth:2,pointRadius:2,pointBackgroundColor:'#8B6C42',tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#2C2416',titleColor:'#E8E0D0',bodyColor:'#9C8E7A',callbacks:{label:function(c){return ' $'+c.raw.toLocaleString();}}}},scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C8E7A',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C8E7A',font:{size:10},callback:function(v){return '$'+(v>=1000?(v/1000).toFixed(0)+'k':v);}}}}}});
-  document.getElementById('debtResults').scrollIntoView({behavior:'smooth',block:'start'});
+    if(saved.growthScore)growthScore=saved.growthScore;
+    if(saved.bannerDismissed)bannerDismissed=saved.bannerDismissed;
+    // Streak logic
+    handleStreak(saved.lastDate,saved.streak||0);
+    return true;
+  }catch(e){return false;}
 }
 function markPaid(idx,name,amt){
   paidN++;var el=document.getElementById('rd'+idx);if(!el)return;
@@ -2429,183 +2390,663 @@ function markPaid(idx,name,amt){
 
 // ─── DARK MODE ───
 var isDark=false;
-function toggleDark(){
-  isDark=!isDark;
-  document.body.classList.toggle('dark-mode',isDark);
-  updateThemePill();
-  try{localStorage.setItem('cmc_dark',isDark?'1':'0');}catch(e){}
-}
-function updateThemePill(){
-  var lp=document.getElementById('lightPill');
-  var dp=document.getElementById('darkPill');
-  if(!lp||!dp)return;
-  if(isDark){
-    lp.style.background='transparent';lp.style.color='var(--dim)';
-    dp.style.background='var(--dark)';dp.style.color='var(--white)';
-  }else{
-    lp.style.background='var(--dark)';lp.style.color='var(--white)';
-    dp.style.background='transparent';dp.style.color='var(--dim)';
-  }
-}
-function loadDarkPref(){
-  try{
-    if(localStorage.getItem('cmc_dark')==='1'){
-      isDark=true;
-      document.body.classList.add('dark-mode');
-    }
-  }catch(e){}
-  updateThemePill();
-}
-loadDarkPref();
-
-// ─── PWA INSTALL ───
-var deferredInstall=null;
-window.addEventListener('beforeinstallprompt',function(e){
-  e.preventDefault();deferredInstall=e;
-  var btn=document.getElementById('installBtn');
-  if(btn)btn.style.display='flex';
-});
-function installApp(){
-  if(deferredInstall){
-    deferredInstall.prompt();
-    deferredInstall.userChoice.then(function(){deferredInstall=null;var btn=document.getElementById('installBtn');if(btn)btn.style.display='none';});
-  } else {
-    // Show guide page with install instructions
-    goPage('guide','pn-guide');
-    cel('📲','Install to your home screen','Go to the Guide page and follow the install instructions for your device.','It takes about 30 seconds and opens like a real app.');
-  }
-}
-
-// ─── EXPORT / IMPORT ───
-function exportData(){
-  var toExport={
-    version:'cmc_v12',
-    exported:new Date().toISOString(),
-    U:U,
-    growthScore:growthScore,
-    streak:currentStreak,
-    lastDate:lastOpenDate
-  };
-  var blob=new Blob([JSON.stringify(toExport,null,2)],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='ClearMindCo_backup_'+new Date().toISOString().split('T')[0]+'.json';
-  document.body.appendChild(a);a.click();
-  document.body.removeChild(a);URL.revokeObjectURL(url);
-  cel('✦','Data exported.','Your backup file has downloaded. Transfer it to your other device and use Import Data to restore everything.','Keep this file somewhere safe — it\'s your complete backup.');
-}
-function importData(){
-  var f=document.getElementById('importFile');if(f)f.click();
-}
-function handleImport(e){
-  var file=e.target.files&&e.target.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    try{
-      var saved=JSON.parse(ev.target.result);
-      if(!saved.U)throw new Error('Invalid file');
-      // Restore everything
-      Object.assign(U,saved.U);
-      if(saved.growthScore)growthScore=saved.growthScore;
-      if(saved.streak)currentStreak=saved.streak;
-      if(saved.lastDate)lastOpenDate=saved.lastDate;
-      saveData();
-      // Re-render everything
-      renderTasks();renderHabits();renderGoals();renderJ();renderGrowth();
-      // Update greeting and journal date
-      var h=new Date().getHours();
-      var g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
-      var el=document.getElementById('greeting');if(el)el.textContent=U.name?g+', '+U.name+'.':g+'.';
-      var stStr=document.getElementById('stStreak');if(stStr)stStr.textContent=currentStreak;
-      if(U.name){var cn=document.getElementById('coachName');if(cn)cn.textContent=U.name+"'s Clear Mind Coach";}
-      cel('✦','Data restored.','Everything is back — your goals, habits, streaks, tasks, and journal entries. Right where you left them.','You\'re all set. Keep going.');
-    }catch(err){
-      cel('⚠️','Import failed.','The file doesn\'t look right. Make sure you\'re using a backup file exported from Clear Mind Co.','Try exporting again from your other device.');
-    }
-    e.target.value='';
-  };
-  reader.readAsText(file);
-}
-
-// ─── INTERACTIVE TOUR — simple, bottom-anchored, always works ───
-var TOUR_STEPS=[
-  {page:'home',navId:'pn-home',icon:'🏠',title:'Welcome to Clear Mind Co.',body:'This is your daily dashboard. Every morning, open this first — before email, before social media. Let\'s walk through every section in 2 minutes.'},
-  {page:'home',navId:'pn-home',icon:'✦',title:'Your One Focus',body:'The dark card at the top shows your single most important task for today. Just one. Add a task in Planner and it appears here automatically. One clear target — that\'s how momentum starts.'},
-  {page:'home',navId:'pn-home',icon:'🌱',title:'Dopamine Reward System',body:'Every task you complete, every habit you log, every focus session grows your reward. Your brain gets a real dopamine hit for showing up. Watch it level up as your streak builds.'},
-  {page:'tasks',navId:'pn-tasks',icon:'📋',title:'Daily Planner',body:'Add up to 3 tasks here. Mark the most important one "Must Do" — that\'s your MIT. Do it first, before anything else. If you only do one thing today, let it be that.'},
-  {page:'habits',navId:'pn-habits',icon:'✅',title:'Habit Tracker',body:'One tap to check off each habit. Add your own with the Add button. Missed a day? No shame — just start again. Streaks build with consistency, not perfection.'},
-  {page:'focus',navId:'pn-focus',icon:'⏱',title:'Focus Zone',body:'25-minute Pomodoro timer. One task, no interruptions. If a task feels too big, the Task Breaker below splits it into 5 small steps. Start with Step 1 only — motivation comes after starting.'},
-  {page:'coach',navId:'pn-coach',icon:'✨',title:'Your AI Coach',body:'Not a generic chatbot. Your coach knows your name, your goal, and what holds you back. Type what\'s going on and it gives you a specific next step every time. Use the quick-start buttons to begin.'},
-  {page:'money',navId:'pn-money',icon:'💰',title:'Money Mode',body:'Enter your debts and tap Calculate. Dave Ramsey\'s debt snowball — smallest balance first. See your exact payoff date and how much interest you save. Mark each one paid as you go.'},
-  {page:'home',navId:'pn-home',icon:'🎯',title:'You\'re ready. Let\'s go.',body:'Home every morning. One Must Do task. Habits before bed. Coach when you hit a wall.\n\nSmall steps, every day. That\'s how this gets built.\n\nYou\'ve got this.',isLast:true}
-];
-var tourStep=0,tourActive=false;
-
-function startTour(){
-  tourStep=0;tourActive=true;
-  document.getElementById('tourOverlay').classList.add('active');
-  renderTour();
-}
-function renderTour(){
-  var step=TOUR_STEPS[tourStep];
-  if(!step){endTour();return;}
-  // Navigate page
-  goPage(step.page,step.navId);
-  // Update content
-  document.getElementById('tourIcon').textContent=step.icon||'✦';
-  document.getElementById('tourTitle').textContent=step.title;
-  document.getElementById('tourBody').innerHTML=step.body.replace(/\n/g,'<br>');
-  document.getElementById('tourStepLabel').textContent='STEP '+(tourStep+1)+' OF '+TOUR_STEPS.length;
-  var nb=document.getElementById('tourNextBtn');
-  if(nb)nb.textContent=step.isLast?'Done — start using it ✓':'Next →';
-  // Dots
-  var de=document.getElementById('tourDots');
-  if(de){
-    de.innerHTML='';
-    TOUR_STEPS.forEach(function(_,i){
-      var d=document.createElement('div');
-      d.className='tour-dot'+(i===tourStep?' on':'');
-      de.appendChild(d);
-    });
-  }
-  // Always dim backdrop, always show card at bottom — no positioning math
-  var backdrop=document.getElementById('tourBackdrop');
-  var card=document.getElementById('tourCard');
-  var highlight=document.getElementById('tourHighlight');
-  if(backdrop)backdrop.classList.add('dim');
-  if(highlight)highlight.style.display='none';
-  if(card)card.style.display='block';
-}
-function tourNext(){
-  tourStep++;
-  if(tourStep>=TOUR_STEPS.length){endTour();return;}
-  renderTour();
-}
-function tourSkip(){endTour();}
-function endTour(){
-  tourActive=false;
-  var ov=document.getElementById('tourOverlay');
-  var bd=document.getElementById('tourBackdrop');
-  var cd=document.getElementById('tourCard');
-  var hl=document.getElementById('tourHighlight');
-  if(ov)ov.classList.remove('active');
-  if(bd)bd.classList.remove('dim');
-  if(cd)cd.style.display='none';
-  if(hl)hl.style.display='none';
-  try{localStorage.setItem('cmc_tour_done','1');}catch(e){}
-  goPage('home','pn-home');
-  setTimeout(function(){
-    cel('✦','Tour complete.','Now you know exactly how it works. Add your first task and start building.','Check off one habit before you close this today.');
-  },300);
-}
-
 function cel(e,t,m,r){
   document.getElementById('celE').textContent=e;document.getElementById('celT').textContent=t;
   document.getElementById('celM').textContent=m;document.getElementById('celR').textContent=r;
   document.getElementById('overlay').classList.add('show');
 }
 </script>
+
+<!-- INTERACTIVE TOUR OVERLAY -->
+
+<div class="tour-overlay" id="tourOverlay">
+  <div class="tour-backdrop" id="tourBackdrop" onclick="tourSkip()"></div>
+  <div class="tour-highlight" id="tourHighlight" style="display:none"></div>
+  <div class="tour-card" id="tourCard" style="display:none">
+    <div class="tour-step-badge">
+      <span id="tourStepLabel">STEP 1 OF 9</span>
+      <div class="tour-step-dots" id="tourDots"></div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:11px;margin-bottom:10px;">
+      <div style="font-size:24px;flex-shrink:0;line-height:1.2;" id="tourIcon">✦</div>
+      <div class="tour-title" id="tourTitle"></div>
+    </div>
+    <div class="tour-body" id="tourBody"></div>
+    <div class="tour-actions">
+      <button class="tour-next" id="tourNextBtn" onclick="tourNext()">Next →</button>
+      <button class="tour-skip" onclick="tourSkip()">Skip</button>
+    </div>
+  </div>
+</div>
+
+-e
+
+// ─── BOOTSTRAP ───
+// Wrapped in DOMContentLoaded so DOM is guaranteed ready
+// Works in all browsers, GitHub Pages, and Claude preview
+document.addEventListener(‘DOMContentLoaded’,function(){
+try{loadDarkPref();}catch(e){}
+try{
+var hasData=loadData();
+if(hasData&&U.name){
+var modal=document.getElementById(‘setup’);
+if(modal)modal.classList.add(‘gone’);
+try{initApp();}catch(e){console.warn(‘initApp:’,e);}
+return;
+}
+}catch(e){
+try{localStorage.removeItem(SAVE_KEY);}catch(e2){}
+U={name:’’,goal:’’,why:’’,challenges:[],push:‘medium’,growthStyle:‘flower’,
+tasks:[],goals:[],jEntries:[],habits:[],calNotes:{}};
+growthScore=0;currentStreak=1;
+}
+// Fresh user — show setup step 0
+try{showSetupStep(0);}catch(e){
+var s=document.getElementById(‘s0’);
+if(s)s.classList.add(‘on’);
+}
+});
+
+</body>
+</html>function addDebtRow(){
+  dRowN++;
+  var id='dr'+dRowN;
+  var el=document.createElement('div');
+  el.className='d-row';
+  el.id=id;
+  el.innerHTML='<input class="d-inp" placeholder="e.g. Visa card" type="text">'
+    +'<input class="d-inp" type="number" placeholder="1500" min="0" step="any">'
+    +'<input class="d-inp" type="number" placeholder="45" min="0" step="any">'
+    +'<input class="d-inp" type="number" placeholder="19.9" min="0" max="100" step="any">'
+    +'<button type="button" class="d-del" onclick="this.closest('.d-row').remove()">✕</button>';
+  var container=document.getElementById('debtInputRows');
+  if(container) container.appendChild(el);
+}
+
+function pick(arr){
+var filtered=arr.filter(function(r){return r.trim()!==lastCoach.trim();});
+if(!filtered.length)filtered=arr;
+return filtered[Math.floor(Math.random()*filtered.length)];
+}
+
+// ── STEPS/PLAN REQUEST — always deliver actual steps, never deflect ──
+if(isStepsRequest){
+// Detect what they’re building/working on from context
+var isBizContext=/(notion|business|product|etsy|gumroad|launch|side hustle|template|shop|brand|sell|sales|income)/.test(m);
+var isAppContext=/(app|website|code|project|design|build)/.test(m);
+var isGoalContext=/(goal|habit|routine|system|life|health|fitness|debt|money)/.test(m);
+
+```
+if(isBizContext){
+  return (n||'Here\'s what to do — ')+'here are 5 steps to move your notion business forward right now:\n\n1. List your 3 most profitable product ideas — what problem does each solve?\n2. Pick ONE and write a simple product description in 2 sentences\n3. Set up your Etsy or Gumroad listing today — even a draft counts\n4. Post one piece of content showing the problem your product solves\n5. Send your link to 5 people today and ask for honest feedback\n\nWhich of these 5 feels hardest right now?';
+} else if(isAppContext){
+  return (n||'Here\'s your plan — ')+'5 steps to make progress on your project today:\n\n1. Write down exactly what "done" looks like — be specific\n2. Break it into the smallest possible pieces — what\'s step 1?\n3. Open Focus Zone and set the timer for 25 minutes\n4. Work only on Step 1 — nothing else exists right now\n5. After 25 min, log what you did and set the next step\n\nWhat\'s the project? Tell me and I\'ll make these more specific.';
+} else if(isGoalContext){
+  return (n||'Here\'s what I\'d do — ')+'5 steps to start making real progress on '+G+':\n\n1. Write your goal down with a specific deadline attached\n2. Identify the ONE thing blocking you right now\n3. Break that blocker into 3 small tasks in your Planner\n4. Mark the most important one "Must Do" and do it first today\n5. Check your habit tracker before bed — even one habit is a win\n\nWhich step feels furthest away right now?';
+} else {
+  return (n||'Okay — ')+'here are 5 steps to get unstuck and moving right now:\n\n1. Write down exactly what you\'re trying to accomplish — one sentence\n2. Identify what\'s actually stopping you — be honest\n3. Break the task into 5 tiny steps using the Focus Zone Task Breaker\n4. Start Step 1 only — give it 10 minutes, nothing else\n5. Come back here and tell me what happened\n\nWhat specifically are you trying to make progress on?';
+}
+```
+
+}
+
+// ── SPECIFIC TASK HELP — most common real use case ──
+if(isTaskHelp){
+return pick([
+n+‘Open the Focus Zone right now. Use the Task Breaker — write what you're working on at the top, then break it into 5 steps. Your only job is Step 1. What specifically is the task?’,
+‘What's actually blocking you — do you not know what to do next, or do you know and you're just not doing it? Those need completely different solutions.’,
+n+‘Set a timer for 10 minutes. Not to finish it — just to work on it for 10 minutes. That's the whole goal. What happens after the timer is up to you.’,
+n+(hasADHD?‘ADHD makes big tasks feel impossible. ‘:’’)+‘Make it smaller. What's the absolute first physical action you'd take on this — something that takes under 3 minutes?’
+]);
+}
+
+// ── CAN’T START ──
+if(isCantStart){
+return pick([
+n+‘The hardest part of any task is the first 2 minutes. Open Focus Zone, use the Task Breaker, and write down 5 steps. Make Step 1 so small it feels almost stupid easy. What's the task you need to start?’,
+n+(hasADHD?‘ADHD makes starting the hardest part — not finishing. ‘:’’)+‘Your brain needs a trigger. Set a 2-minute timer. Tell yourself you'll only work for 2 minutes. The resistance dies once you start.’,
+‘What specifically is stopping you from starting? Is it the task itself, that you don't know where to begin, or something else going on? Tell me and we'll solve the right problem.’
+]);
+}
+
+// ── WIN ──
+if(isWin){
+return pick([
+n+‘That's real — don't scroll past it. What you just did is evidence that you can follow through. Write it down somewhere and look at it when doubt shows up. What's the next move from here?’,
+’Lock that in. That's not luck, that's you doing the work. ’+(G?‘One step closer to ‘+G+’. ‘:’’)+‘What's the next thing on the list?’,
+n+‘Every win is proof against every future doubt. Remember this moment. Now — do you want to keep the momentum going, or take a real break first? Both are valid.’,
+‘That matters more than you think. Most people never finish what they start. You did. What's next?’
+]);
+}
+
+// ── PROCRASTINATION ──
+if(isProc){
+return pick([
+n+(hasProc?‘Procrastination is the pattern you're working against. ‘:’’)+‘What exactly are you avoiding? Name it specifically — sometimes just naming it makes it 50% less scary. Then tell me the first step.’,
+hard?n+‘You already know what to do. You're just not doing it. Open the Task Breaker right now — five steps. Start step 1. Stop thinking.’:n+‘You're not lazy. Something about this task feels wrong — too big, too vague, or too scary. Which one is it?’,
+n+‘The procrastination loop looks like this: avoid → feel guilty → avoid more. Break it now. One task, five minutes, no excuses. What's the task?’,
+’Set your phone face down. Open the Focus Zone. Start the 25-min timer. ’+(G?‘You said you want ‘+G+’ — this is how it happens.’:‘This is how it happens.’)
+]);
+}
+
+// ── STUCK/FUNK ──
+if(isStuck){
+return pick([
+n+‘Funks don't break when you think harder. They break when you move. Open the Planner, add one tiny task, and do it. What's one thing — even small — you could do in the next 10 minutes?’,
+(hasADHD?n+‘Low dopamine = everything feels pointless. That's brain chemistry, not reality. ‘:’’)+‘The move is action, not motivation. What's the smallest thing you could do that would feel like progress?’,
+n+‘Don't try to fix the feeling. Just give your brain one win. Even something small. What's one thing you've been meaning to do that would take under 15 minutes?’,
+soft?n+‘It's okay to be here. But staying here doesn't move you forward. What's one gentle step you could take right now — not to solve everything, just to start?’:n+‘The funk ends when you act. Pick one thing. Do it. That's the only way out.’
+]);
+}
+
+// ── FOCUS/DISTRACTION ──
+if(isFocus){
+return pick([
+n+(hasADHD?‘Your brain is wired to seek novelty — ‘:’’)+‘Phone face down. One tab open. Focus Zone timer on 25 minutes. Tell me what task you're working on and let's get you started.’,
+‘Distraction is a symptom — usually of a task that's too vague or too big. What specifically are you trying to work on? Let's make it concrete enough that your brain stops looking for an exit.’,
+n+‘Try this: write down the one thing you need to focus on right now. Just seeing it in writing helps. Then start the Focus Zone timer and do only that for 25 min. What's the task?’,
+’Social media and distraction are dopamine shortcuts. ’+(G?‘But ‘+G+’ doesn't get built on shortcuts. ‘:’’)+‘Close the tabs. What were you supposed to be doing before you got distracted?’
+]);
+}
+
+// ── OVERWHELM ──
+if(isOverwhelm){
+return pick([
+n+(hasOver?‘Overwhelm is your pattern — you already know this. ‘:’’)+‘Stop trying to do everything. You can only do one thing right now. What's the single most important task? Just that one.’,
+‘Brain dump everything onto the Home page first — every task, worry, idea. Get it out of your head. Then come back here and tell me what's left. That's how we find the one thing.’,
+n+‘When everything feels urgent, nothing gets done. Here's the filter: what's the one thing that if you did it today, everything else becomes easier or irrelevant? Do that.’,
+hard?n+‘You don't need to solve everything. You need to do one thing. Pick it right now — what's it going to be?’:n+‘Let's slow down. Take a breath. Now tell me — what's the one thing you actually have to get done today?’
+]);
+}
+
+// ── SELF DOUBT ──
+if(isDoubt){
+return pick([
+n+(hasDoubt?‘You said self-doubt holds you back — so let's name it directly. ‘:’’)+‘What specifically are you doubting? Not vague “I can't do this” — what exact thing are you afraid won't work out?’,
+‘Doubt is your brain protecting you from risk. But it's not a prediction. What's one thing you've already accomplished — even small — that proves you're more capable than the doubt says?’,
+n+‘The version of you that succeeds at ‘+(G||‘what you want’)+’ felt this exact same doubt. They just kept going anyway. What's the next thing you can do right now, doubt and all?’,
+soft?n+‘You're allowed to feel uncertain. But uncertainty doesn't mean stop. What's one small thing you know for sure you can do today?’:n+‘Your doubts are not facts. What do you actually know to be true about what you're capable of?’
+]);
+}
+
+// ── NEXT STEP ──
+if(isNextStep){
+return pick([
+n+‘Right now, the most important thing for ‘+(G||‘your goal’)+’ is: what's the one task that if completed today, moves the needle the most? Add it to the Planner as your Must Do.’,
+‘Here's how to figure out your next step: ask “what's the thing I've been avoiding most?” — that's usually the most important thing. What comes up?’,
+n+‘Go to the Planner. Add your most important task for today. Mark it Must Do. That's your next step — everything else is secondary. What do you want to add?’,
+(G?‘Working toward ‘+G+’ — ‘:’’)+n+‘what's the single action that moves that forward today? Not plan it, not research it — actually do it. What is it?’
+]);
+}
+
+// ── BUSINESS / PRODUCT ──
+if(isBusiness){
+return pick([
+n+‘Your notion business moves forward one action at a time. Right now, the most important thing is getting your product in front of people. Is your listing live yet? If not — that's today's Must Do.’,
+‘Sales come from visibility, not perfection. The question isn't “is it ready enough” — it's “have enough people seen it?” What's your current plan to get it in front of more people today?’,
+n+(G?‘You're building ‘+G+’. ‘:’’)+‘The biggest mistake is spending too long building before selling. Have you shown your product to real people yet? Even 5 people is data. Go do that today.’,
+n+’What specifically is stuck with your ’+( m.includes(‘notion’)?‘notion ‘:’’)+‘business right now — the product itself, getting traffic, making sales, or something else? Tell me exactly and we'll fix the right thing.’
+]);
+}
+
+// ── HABITS ──
+if(isHabit){
+return pick([
+n+‘Streaks break — that's not failure, that's normal. The only question is: do you start again today or wait until Monday? Go to Habits and check off one thing right now.’,
+‘Consistency isn't about being perfect. It's about the percentage. Miss a day, fine. Miss a week, that's a pattern. What's the habit you're struggling with most right now?’,
+n+‘The habit you're avoiding — why specifically? Is it the time, the effort, or is there a friction point that makes it hard to start? Let's fix the friction.’,
+‘Two-day rule: never miss the same habit twice in a row. You missed yesterday. What's stopping you from doing it today?’
+]);
+}
+
+// ── MONEY ──
+if(isMoney){
+return pick([
+n+‘Money stress is one of the heaviest things to carry. Go to the Money Mode page — enter your debts and run the snowball calculator. Having a plan changes the emotional weight of it completely.’,
+‘The debt snowball works because it gives your brain wins. Smallest balance first — not highest interest. Each payoff rolls into the next. Have you mapped it out yet?’,
+n+‘Financial anxiety gets worse when it's vague. The moment you write the numbers down and make a plan, it becomes manageable. It's still hard, but it's not terrifying. Go to Money Mode.’,
+‘What's the specific money situation right now? Debt, not enough income, or both? Let's figure out the one thing you can actually control today.’
+]);
+}
+
+// ── TIRED/BURNOUT ──
+if(isTired){
+return pick([
+n+‘If you're genuinely burned out, pushing harder makes it worse. Rest is not quitting — it's maintenance. What does your body actually need right now?’,
+‘On empty days, do the minimum version of your habits. Even 10%. One glass of water. One task. That's still a win. What's the one smallest thing you could do today?’,
+n+‘Burnout usually means you've been giving more than you've been restoring. What have you done this week that was just for you — not productive, not useful, just restorative?’,
+‘Rest today, build tomorrow. But before you fully check out — is there one thing, under 10 minutes, that you'd feel good about completing first?’
+]);
+}
+
+// ── ANGER ──
+if(isAnger){
+return pick([
+n+‘That frustration is real — and it's information. What specifically is making you angry? Sometimes the thing that's most frustrating is also the thing you care about most.’,
+‘Use it. Frustrated energy is powerful when it's directed. What's the one thing you can actually change or control in this situation right now?’,
+n+‘What would make this better — not perfect, not solved completely, but actually better? Tell me and let's figure out if it's within your control.’,
+]);
+}
+
+// ── PERSONAL/RELATIONSHIP ──
+if(isPersonal){
+return pick([
+n+‘That sounds heavy. Building something while dealing with personal stuff is genuinely hard. You don't have to separate the two — just tell me what's going on.’,
+‘What you're feeling is valid. And your work still matters. Is there anything from what you're going through that's directly blocking you from ‘+(G||‘what you want to build’)+’?’,
+n+‘You don't have to have it all together to keep going. What's one thing — just one — that you can do today that's still a step forward?’
+]);
+}
+
+// ── FALLBACK — smarter general responses that actually engage ──
+var generalResponses=[
+n+‘Tell me exactly what's going on right now. Not the overview — the specific thing that feels hardest in this moment.’,
+n+‘What would a win look like for you today? Even a small one. Tell me that and we'll figure out how to get there.’,
+‘What's the one thing you've been putting off the longest? Let's start there.’,
+n+‘If I could take one thing off your mental plate right now — what would it be? That's probably the thing we need to work on.’,
+(G?n+‘You set ‘+G+’ as your goal. What's actually standing between you and the next step toward that?’:n+‘What's the thing that's been sitting on your to-do list the longest? Tell me and we'll break it down.’),
+n+‘Be specific — what exactly is the situation? The more specific you are, the more useful I can be.’,
+‘What happened today? Walk me through it — sometimes just saying it out loud (or typing it) is the thing that unlocks the next move.’,
+n+‘Is the problem that you don't know what to do, or that you know and you're not doing it? Those need completely different solutions.’
+];
+return pick(generalResponses);
+}
+
+function saveCalEntry(){
+if(!calSelectedKey)return;
+var g=(document.getElementById(‘calGoalInp’).value||’’).trim();
+var n=(document.getElementById(‘calNoteInp’).value||’’).trim();
+if(g||n){U.calNotes[calSelectedKey]={goal:g,note:n};}
+else{delete U.calNotes[calSelectedKey];}
+renderCal();showCalEntry(calSelectedDay,calSelectedKey);saveData();
+cel(‘📅’,‘Day planned.’,‘You set an intention for that day. That's how clarity is built.’,‘Review it the morning of — and make it happen.’);
+}
+
+// ─── BOOTSTRAP — check localStorage on load ───
+
+// ─── DEBT ───
+var dRowN=0,debtChart=null,origT=0,paidN=0;
+function installApp(){
+if(deferredInstall){
+deferredInstall.prompt();
+deferredInstall.userChoice.then(function(){deferredInstall=null;var btn=document.getElementById(‘installBtn’);if(btn)btn.style.display=‘none’;});
+} else {
+// Show guide page with install instructions
+goPage(‘guide’,‘pn-guide’);
+cel(‘📲’,‘Install to your home screen’,‘Go to the Guide page and follow the install instructions for your device.’,‘It takes about 30 seconds and opens like a real app.’);
+}
+}
+
+// ─── EXPORT / IMPORT ───
+function addMsg(role,text){
+var box=document.getElementById(‘chatMsgs’);if(!box)return;
+var div=document.createElement(‘div’);div.className=‘msg ‘+role;
+var av=document.createElement(‘div’);av.className=‘av ‘+(role===‘coach’?‘avc’:‘avu’);av.textContent=role===‘coach’?‘✨’:‘You’;
+var bubble=document.createElement(‘div’);bubble.className=‘bubble’;bubble.innerHTML=text.replace(/\n/g,’<br>’);
+div.appendChild(av);div.appendChild(bubble);box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+function updateStats(){
+var tot=U.tasks.length,done=U.tasks.filter(function(t){return t.done;}).length,left=Math.max(0,tot-done);
+var stT=document.getElementById(‘stT’);if(stT)stT.textContent=tot===0?’—’:left+’ left’;
+var stTB=document.getElementById(‘stTB’);if(stTB)stTB.style.width=(tot>0?done/tot*100:0)+’%’;
+var stH=document.getElementById(‘stH’);if(stH)stH.textContent=hDone+’/’+U.habits.length;
+var stHB=document.getElementById(‘stHB’);if(stHB)stHB.style.width=(U.habits.length>0?hDone/U.habits.length*100:0)+’%’;
+var first=U.tasks.find(function(t){return !t.done&&t.pri===‘must’})||U.tasks.find(function(t){return !t.done;});
+var fc=document.getElementById(‘fcTask’);if(fc&&first&&!oneDone)fc.textContent=first.name;
+}
+
+// ─── ONE THING ───
+function renderHabits(){
+var list=document.getElementById(‘habitList’);if(!list)return;
+list.innerHTML=’’;
+U.habits.forEach(function(h,i){
+var div=document.createElement(‘div’);div.className=‘habit’+(h.done?’ done’:’’);
+div.innerHTML=’<div class="h-box" onclick="doHabit('+i+')">✓</div><span class="h-name" onclick="doHabit('+i+')">’+h.name+’</span><span class="h-streak">’+(h.streak?h.streak+’ days’:’’)+’</span><button class="h-del" onclick="delHabit('+i+')" title="Remove">✕</button>’;
+list.appendChild(div);
+});
+updateStats();
+}
+function saveJ(){
+var inp=document.getElementById(‘jInput’);if(!inp||(inp.value||’’).trim()===’’)return;
+var now=new Date();U.jEntries.unshift({text:inp.value.trim(),date:now.toLocaleDateString(‘en-US’,{weekday:‘long’,year:‘numeric’,month:‘long’,day:‘numeric’})});
+inp.value=’’;renderJ();addGrowthScore(5);saveData();
+cel(‘📓’,‘Journal saved.’,‘Writing is thinking. You just got clearer.’,‘Read this again in 30 days.’);
+}
+function endTour(){
+tourActive=false;
+var ov=document.getElementById(‘tourOverlay’);
+var bd=document.getElementById(‘tourBackdrop’);
+var cd=document.getElementById(‘tourCard’);
+var hl=document.getElementById(‘tourHighlight’);
+if(ov)ov.classList.remove(‘active’);
+if(bd)bd.classList.remove(‘dim’);
+if(cd)cd.style.display=‘none’;
+if(hl)hl.style.display=‘none’;
+try{localStorage.setItem(‘cmc_tour_done’,‘1’);}catch(e){}
+goPage(‘home’,‘pn-home’);
+setTimeout(function(){
+cel(‘✦’,‘Tour complete.’,‘Now you know exactly how it works. Add your first task and start building.’,‘Check off one habit before you close this today.’);
+},300);
+}
+
+function addGoal(){
+var n=(document.getElementById(‘gName’).value||’’).trim();if(!n)return;
+U.goals.push({name:n,why:(document.getElementById(‘gWhy’).value||’’).trim(),pct:0,cat:(document.getElementById(‘gCat’).value||‘Personal’),date:(document.getElementById(‘gDate’).value||’’)});
+document.getElementById(‘gName’).value=’’;document.getElementById(‘gWhy’).value=’’;
+renderGoals();cel(‘✨’,‘Goal added.’,‘It's in the system. Now let's build it.’,‘Tell someone about this goal today — commitment gets real when spoken.’);saveData();
+}
+function delHabit(i){U.habits.splice(i,1);if(hDone>U.habits.length)hDone=U.habits.length;renderHabits();saveData();}
+function deleteTask(i){
+if(U.tasks[i].done)tDone=Math.max(0,tDone-1);
+U.tasks.splice(i,1);renderTasks();saveData();
+}
+function initApp(){
+var now=new Date();
+var days=[‘Sunday’,‘Monday’,‘Tuesday’,‘Wednesday’,‘Thursday’,‘Friday’,‘Saturday’];
+var months=[‘January’,‘February’,‘March’,‘April’,‘May’,‘June’,‘July’,‘August’,‘September’,‘October’,‘November’,‘December’];
+var h=now.getHours();
+var g=h<12?‘Good morning’:h<18?‘Good afternoon’:‘Good evening’;
+
+// Validate saved data quality — if name/goal look corrupted, clear them
+if(U.name&&U.name.length<=1){U.name=’’;}
+if(U.goal&&(U.goal===U.name||U.goal.length<=2)){U.goal=’’;}
+if(U.why&&(U.why===U.name||U.why===U.goal)){U.why=’’;}
+
+var el=document.getElementById(‘greeting’);if(el)el.textContent=U.name?g+’, ‘+U.name+’.’:g+’.’;
+var cd=document.getElementById(‘coverDate’);if(cd)cd.textContent=days[now.getDay()]+’, ‘+months[now.getMonth()]+’ ‘+now.getDate();
+var jd=document.getElementById(‘jDate’);if(jd)jd.textContent=days[now.getDay()]+’, ‘+months[now.getMonth()]+’ ‘+now.getDate()+’, ‘+now.getFullYear();
+var q=QS[Math.floor(Math.random()*QS.length)];
+var qt=document.getElementById(‘qText’);if(qt)qt.textContent=q.t;
+var qa=document.getElementById(‘qAuthor’);if(qa)qa.textContent=’— ’+q.a;
+
+// Update streak display
+var stStr=document.getElementById(‘stStreak’);if(stStr)stStr.textContent=currentStreak;
+var stStrB=document.getElementById(‘stStreakB’);if(stStrB)stStrB.style.width=Math.min(100,currentStreak*5)+’%’;
+
+// Habits
+try{if(!U.habits||!U.habits.length)U.habits=defaultHabits.map(function(h){return Object.assign({},h);});renderHabits();}catch(e){}
+// Tasks
+try{renderTasks();}catch(e){}
+// Goals
+try{if(U.goals&&U.goals.length){renderGoals();}else if(U.goal){U.goals=[{name:U.goal,why:U.why,pct:5,cat:‘Personal’,date:’’}];renderGoals();}}catch(e){}
+// Journal
+try{if(U.jEntries&&U.jEntries.length)renderJ();}catch(e){}
+// Journal prompts
+var jpRow=document.getElementById(‘jpRow’);
+if(jpRow){
+var prompts=U.goal?[
+‘How am I progressing toward: ‘+U.goal+’?’,
+‘What's holding me back right now and what changes if I let it go?’,
+‘What does my best self look like in 1 year?’,
+‘What am I most proud of lately, even the small things?’
+]:[
+‘Where am I in life right now — honestly?’,
+‘What's holding me back and what changes if I let it go?’,
+‘What does my best self look like in 1 year?’,
+‘What am I most proud of lately, even the small things?’
+];
+jpRow.innerHTML=’’;
+prompts.forEach(function(p){var d=document.createElement(‘div’);d.className=‘jp’;d.textContent=p;d.onclick=function(){var a=document.getElementById(‘jInput’);if(a){a.value=p+’\n\n’;a.focus();}};jpRow.appendChild(d);});
+}
+// Coach
+if(U.name){
+var cn=document.getElementById(‘coachName’);if(cn)cn.textContent=U.name+”‘s Clear Mind Coach”;
+var om=document.getElementById(‘openMsg’);
+var goalLooksValid=U.goal&&U.goal.length>4&&U.goal!==U.name;
+if(om&&goalLooksValid){om.textContent=‘Hey ‘+U.name+’. I know you're working toward ‘+U.goal+’. What's on your mind right now — let's figure out your next move.’;}
+else if(om&&U.name){om.textContent=‘Hey ‘+U.name+’. What's going on right now? Tell me what you're working on and we'll figure out your next move together.’;}
+}
+// Growth widget
+renderGrowth();
+// New user banner
+var banner=document.getElementById(‘newUserBanner’);
+if(banner){banner.style.display=bannerDismissed?‘none’:‘flex’;}
+// Pre-fill 2 debt rows only if none exist
+if(!document.querySelector(’#debtInputRows .d-row’)){addDebtRow(’’,’’,’’,’’);addDebtRow(’’,’’,’’,’’);}
+// Save updated last date
+lastOpenDate=getTodayStr();
+saveData();
+}
+
+// ─── NAV ───
+function renderWeek(){
+var grid=document.getElementById(‘weekGrid’);if(!grid)return;
+var days=[‘Sunday’,‘Monday’,‘Tuesday’,‘Wednesday’,‘Thursday’,‘Friday’,‘Saturday’];
+var today=new Date();
+// Find start of week (Sunday)
+var start=new Date(today);
+start.setDate(today.getDate()-today.getDay());
+var months=[‘Jan’,‘Feb’,‘Mar’,‘Apr’,‘May’,‘Jun’,‘Jul’,‘Aug’,‘Sep’,‘Oct’,‘Nov’,‘Dec’];
+grid.innerHTML=’’;
+for(var i=0;i<7;i++){
+var d=new Date(start);
+d.setDate(start.getDate()+i);
+var key=‘week-’+d.getFullYear()+’-’+d.getMonth()+’-’+d.getDate();
+var isToday=(d.toDateString()===today.toDateString());
+var saved=U.calNotes&&U.calNotes[key]||{};
+var row=document.createElement(‘div’);
+row.style.cssText=‘padding:10px 0;border-bottom:1px solid var(–line);’;
+row.innerHTML=
+‘<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">’
++’<div style="width:32px;height:32px;border-radius:8px;background:'+(isToday?'var(--dark)':'var(--cream)')+';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">’
++’<div style="font-size:9px;font-weight:600;color:'+(isToday?'rgba(255,255,255,.6)':'var(--dim)')+';letter-spacing:.5px;">’+days[d.getDay()].slice(0,3).toUpperCase()+’</div>’
++’<div style="font-size:13px;font-weight:700;color:'+(isToday?'white':'var(--dark)')+';">’+d.getDate()+’</div>’
++’</div>’
++’<input class="cal-inp" placeholder="Goal or intention for '+days[d.getDay()]+'..." value="'+(saved.goal||'')+'" data-key="'+key+'" oninput="saveWeekEntry(this)" style="margin-bottom:0;flex:1;">’
++’</div>’;
+grid.appendChild(row);
+}
+}
+function saveWeekEntry(inp){
+var key=inp.getAttribute(‘data-key’);
+if(!key)return;
+if(!U.calNotes)U.calNotes={};
+if(inp.value.trim()){U.calNotes[key]={goal:inp.value.trim()};}
+else{delete U.calNotes[key];}
+saveData();
+}
+
+// ─── DUMP TOGGLE ───
+function handleImport(e){
+var file=e.target.files&&e.target.files[0];if(!file)return;
+var reader=new FileReader();
+reader.onload=function(ev){
+try{
+var saved=JSON.parse(ev.target.result);
+if(!saved.U)throw new Error(‘Invalid file’);
+// Restore everything
+Object.assign(U,saved.U);
+if(saved.growthScore)growthScore=saved.growthScore;
+if(saved.streak)currentStreak=saved.streak;
+if(saved.lastDate)lastOpenDate=saved.lastDate;
+saveData();
+// Re-render everything
+renderTasks();renderHabits();renderGoals();renderJ();renderGrowth();
+// Update greeting and journal date
+var h=new Date().getHours();
+var g=h<12?‘Good morning’:h<18?‘Good afternoon’:‘Good evening’;
+var el=document.getElementById(‘greeting’);if(el)el.textContent=U.name?g+’, ‘+U.name+’.’:g+’.’;
+var stStr=document.getElementById(‘stStreak’);if(stStr)stStr.textContent=currentStreak;
+if(U.name){var cn=document.getElementById(‘coachName’);if(cn)cn.textContent=U.name+”‘s Clear Mind Coach”;}
+cel(‘✦’,‘Data restored.’,‘Everything is back — your goals, habits, streaks, tasks, and journal entries. Right where you left them.’,‘You're all set. Keep going.’);
+}catch(err){
+cel(‘⚠️’,‘Import failed.’,‘The file doesn't look right. Make sure you're using a backup file exported from Clear Mind Co.’,‘Try exporting again from your other device.’);
+}
+e.target.value=’’;
+};
+reader.readAsText(file);
+}
+
+// ─── INTERACTIVE TOUR — simple, bottom-anchored, always works ───
+var TOUR_STEPS=[
+{page:‘home’,navId:‘pn-home’,icon:‘🏠’,title:‘Welcome to Clear Mind Co.’,body:‘This is your daily dashboard. Every morning, open this first — before email, before social media. Let's walk through every section in 2 minutes.’},
+{page:‘home’,navId:‘pn-home’,icon:‘✦’,title:‘Your One Focus’,body:‘The dark card at the top shows your single most important task for today. Just one. Add a task in Planner and it appears here automatically. One clear target — that's how momentum starts.’},
+{page:‘home’,navId:‘pn-home’,icon:‘🌱’,title:‘Dopamine Reward System’,body:‘Every task you complete, every habit you log, every focus session grows your reward. Your brain gets a real dopamine hit for showing up. Watch it level up as your streak builds.’},
+{page:‘tasks’,navId:‘pn-tasks’,icon:‘📋’,title:‘Daily Planner’,body:‘Add up to 3 tasks here. Mark the most important one “Must Do” — that's your MIT. Do it first, before anything else. If you only do one thing today, let it be that.’},
+{page:‘habits’,navId:‘pn-habits’,icon:‘✅’,title:‘Habit Tracker’,body:‘One tap to check off each habit. Add your own with the Add button. Missed a day? No shame — just start again. Streaks build with consistency, not perfection.’},
+{page:‘focus’,navId:‘pn-focus’,icon:‘⏱’,title:‘Focus Zone’,body:‘25-minute Pomodoro timer. One task, no interruptions. If a task feels too big, the Task Breaker below splits it into 5 small steps. Start with Step 1 only — motivation comes after starting.’},
+{page:‘coach’,navId:‘pn-coach’,icon:‘✨’,title:‘Your AI Coach’,body:‘Not a generic chatbot. Your coach knows your name, your goal, and what holds you back. Type what's going on and it gives you a specific next step every time. Use the quick-start buttons to begin.’},
+{page:‘money’,navId:‘pn-money’,icon:‘💰’,title:‘Money Mode’,body:‘Enter your debts and tap Calculate. Dave Ramsey's debt snowball — smallest balance first. See your exact payoff date and how much interest you save. Mark each one paid as you go.’},
+{page:‘home’,navId:‘pn-home’,icon:‘🎯’,title:‘You're ready. Let's go.’,body:‘Home every morning. One Must Do task. Habits before bed. Coach when you hit a wall.\n\nSmall steps, every day. That's how this gets built.\n\nYou've got this.’,isLast:true}
+];
+var tourStep=0,tourActive=false;
+
+function removeTyping(){var t=document.getElementById(‘typing’);if(t)t.remove();}
+
+async function callCoach(msg){
+chatHist.push({role:‘user’,content:msg});
+showTyping();
+var btn=document.getElementById(‘sendBtn’);if(btn)btn.disabled=true;
+
+// Check if user has provided an API key
+var apiKey=(localStorage.getItem(‘cmc_api_key’)||’’).trim();
+
+if(apiKey){
+// Live AI response with their key
+try{
+var res=await fetch(‘https://api.anthropic.com/v1/messages’,{
+method:‘POST’,
+headers:{‘Content-Type’:‘application/json’,‘x-api-key’:apiKey,‘anthropic-version’:‘2023-06-01’,‘anthropic-dangerous-direct-browser-access’:‘true’},
+body:JSON.stringify({model:‘claude-haiku-4-5-20251001’,max_tokens:250,system:buildSys(),messages:chatHist})
+});
+var data=await res.json();
+if(data.content&&data.content[0]&&data.content[0].text){
+var reply=data.content[0].text;
+chatHist.push({role:‘assistant’,content:reply});
+setTimeout(function(){removeTyping();addMsg(‘coach’,reply);if(btn)btn.disabled=false;},600);
+return;
+}
+}catch(e){}
+}
+
+// Smart offline fallback — always works
+var reply=smartCoachReply(msg);
+chatHist.push({role:‘assistant’,content:reply});
+// Small delay so it feels real
+setTimeout(function(){removeTyping();addMsg(‘coach’,reply);if(btn)btn.disabled=false;},900);
+}
+
+function handleKey(e){if(e.key===‘Enter’&&!e.shiftKey){e.preventDefault();sendMsg();}}
+
+// ─── CALENDAR ───
+var calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelectedDay=null;
+var CAL_MONTHS=[‘January’,‘February’,‘March’,‘April’,‘May’,‘June’,‘July’,‘August’,‘September’,‘October’,‘November’,‘December’];
+var CAL_DAYS=[‘Sun’,‘Mon’,‘Tue’,‘Wed’,‘Thu’,‘Fri’,‘Sat’];
+function sendMsg(){var inp=document.getElementById(‘chatInp’);if(!inp||(inp.value||’’).trim()===’’)return;var msg=inp.value.trim();inp.value=’’;addMsg(‘user’,msg);callCoach(msg);}
+function organizeDump(){
+var text=(document.getElementById(‘dumpText’).value||’’).trim();
+if(!text){document.getElementById(‘dumpText’).focus();return;}
+var btn=document.getElementById(‘organizeBtn’);if(btn){btn.disabled=true;btn.textContent=‘Organizing…’;}
+var sys=‘You are a productivity organizer. The user has done a brain dump — raw thoughts, tasks, worries, ideas. Analyze everything and organize into a clear priority checklist.\n\nReturn ONLY valid JSON. No other text. No markdown. No backticks. Exact format:\n{“must”:[{“task”:“task name”,“steps”:[“step 1”,“step 2”]}],“should”:[{“task”:“task name”,“steps”:[“step 1”,“step 2”]}],“later”:[{“task”:“task name”,“steps”:[“step 1”]}]}\n\nRules:\n- must = urgent/important TODAY\n- should = important but not urgent\n- later = can wait or is just an idea\n- Give 2-3 actionable steps per task max\n- Be concise. Tasks should be action-oriented phrases.’;
+try{
+var res=await fetch(‘https://api.anthropic.com/v1/messages’,{
+method:‘POST’,
+headers:{‘Content-Type’:‘application/json’,‘anthropic-dangerous-direct-browser-access’:‘true’},
+body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:800,system:sys,messages:[{role:‘user’,content:‘Organize this brain dump:\n\n’+text}]})
+});
+var data=await res.json();
+var raw=(data.content&&data.content[0]&&data.content[0].text)||’{}’;
+// Clean possible markdown
+var clean=raw.replace(/`json/g,'').replace(/`/g,’’).trim();
+var parsed=JSON.parse(clean);
+renderOrganized(parsed);
+addGrowthScore(5);
+}catch(e){
+var result=document.getElementById(‘organizedResult’);
+if(result){result.style.display=‘block’;result.innerHTML=’<div style="padding:12px;background:var(--rust-bg);border-radius:8px;font-size:12px;color:var(--rust)">Could not organize right now. Make sure you have a connection and try again.</div>’;}
+}
+if(btn){btn.disabled=false;btn.textContent=‘Organize by Priority ✦’;}
+}
+function loadDarkPref(){
+try{
+if(localStorage.getItem(‘cmc_dark’)===‘1’){
+isDark=true;
+document.body.classList.add(‘dark-mode’);
+}
+}catch(e){}
+updateThemePill();
+}
+loadDarkPref();
+
+// ─── PWA INSTALL ───
+var deferredInstall=null;
+window.addEventListener(‘beforeinstallprompt’,function(e){
+e.preventDefault();deferredInstall=e;
+var btn=document.getElementById(‘installBtn’);
+if(btn)btn.style.display=‘flex’;
+});
+function renderGrowth(){
+var stages=U.growthStyle===‘knight’?KNIGHT_STAGES:FLOWER_STAGES;
+var stage=stages[0];
+for(var i=stages.length-1;i>=0;i–){if(growthScore>=stages[i].score){stage=stages[i];break;}}
+var nextStage=null;
+for(var j=0;j<stages.length;j++){if(stages[j].score>growthScore){nextStage=stages[j];break;}}
+var pct=nextStage?Math.min(100,Math.round((growthScore-stage.score)/(nextStage.score-stage.score)*100)):100;
+var scene=document.getElementById(‘gwScene’);
+if(scene){scene.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div style="font-size:56px;transition:all .5s ease;animation:growPulse 2s ease-in-out infinite">’+stage.icon+’</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:16px;font-weight:700;color:var(--dark)">’+stage.label+’</div></div>’;}
+var gwFill=document.getElementById(‘gwFill’);if(gwFill)gwFill.style.width=Math.max(5,pct)+’%’;
+var gwStatus=document.getElementById(‘gwStatus’);if(gwStatus)gwStatus.textContent=stage.desc+(nextStage?’ · ‘+(nextStage.score-growthScore)+’ points to next stage’:’’);
+var gwLevel=document.getElementById(‘gwLevel’);if(gwLevel)gwLevel.textContent=stage.level;
+var gwTitle=document.getElementById(‘gwTitle’);if(gwTitle)gwTitle.textContent=U.growthStyle===‘knight’?‘Your Knight's Quest’:‘Your Garden’;
+}
+function saveData(){
+try{
+var toSave={
+U:U,
+growthScore:growthScore,
+streak:currentStreak,
+lastDate:lastOpenDate,
+bannerDismissed:bannerDismissed
+};
+localStorage.setItem(SAVE_KEY,JSON.stringify(toSave));
+}catch(e){}
+}
+function updateG(i,v){
+U.goals[i].pct=parseInt(v);
+var p=document.getElementById(‘gpct’+i);if(p)p.textContent=v+’%’;
+var f=document.getElementById(‘gfill’+i);if(f)f.style.width=v+’%’;
+saveData();
+if(parseInt(v)===100){addGrowthScore(30);setTimeout(function(){cel(‘🏆’,‘Goal reached!’,‘You set it, you showed up, you crossed the finish line.’,‘Celebrate tonight. You earned this one.’);},150);}
+}
+
+// ─── JOURNAL ───
+function calNav(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear–;}renderCal();}
+function renderCal(){
+var title=document.getElementById(‘calTitle’);if(title)title.textContent=CAL_MONTHS[calMonth]+’ ‘+calYear;
+var grid=document.getElementById(‘calGrid’);if(!grid)return;
+grid.innerHTML=’’;
+CAL_DAYS.forEach(function(d){var el=document.createElement(‘div’);el.className=‘cal-day-hdr’;el.textContent=d;grid.appendChild(el);});
+var first=new Date(calYear,calMonth,1).getDay();
+var daysIn=new Date(calYear,calMonth+1,0).getDate();
+var today=new Date();
+for(var i=0;i<first;i++){var em=document.createElement(‘div’);em.className=‘cal-day empty’;em.textContent=’.’;grid.appendChild(em);}
+for(var d=1;d<=daysIn;d++){
+var el=document.createElement(‘div’);el.className=‘cal-day’;
+var key=calYear+’-’+calMonth+’-’+d;
+if(today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d)el.classList.add(‘today’);
+if(U.calNotes[key])el.classList.add(‘has-note’);
+el.innerHTML=’<span>’+d+’</span>’;
+(function(day,k){el.onclick=function(){calSelectedDay=day;calSelectedKey=k;showCalEntry(day,k);};;})(d,key);
+grid.appendChild(el);
+}
+}
+var calSelectedKey=’’;
+function showCalEntry(day,key){
+var area=document.getElementById(‘calEntryArea’);if(!area)return;
+area.style.display=‘block’;
+var t=document.getElementById(‘calEntryTitle’);if(t)t.textContent=CAL_MONTHS[calMonth]+’ ‘+day+’, ‘+calYear;
+var n=U.calNotes[key]||{};
+var gi=document.getElementById(‘calGoalInp’);if(gi)gi.value=n.goal||’’;
+var ni=document.getElementById(‘calNoteInp’);if(ni)ni.value=n.note||’’;
+}
+function doHabit(i){
+var h=U.habits[i];
+if(h.done){h.done=false;hDone=Math.max(0,hDone-1);renderHabits();updateStats();saveData();return;}
+h.done=true;h.streak=(h.streak||0)+1;hDone++;
+renderHabits();updateStats();saveData();
+addGrowthScore(5);
+cel(‘✨’,h.msg||‘Habit done.’,h.name+’ — logged.’,h.tip||‘Keep the streak going.’);
+if(hDone===U.habits.length)setTimeout(function(){cel(‘🏆’,‘Perfect habit day.’,‘Every habit. You're becoming the person you said you wanted to be.’,‘One full hour of anything you love — no guilt.’);},400);
+}</script>
 
 <!-- INTERACTIVE TOUR OVERLAY -->
 
