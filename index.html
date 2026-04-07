@@ -63,6 +63,23 @@ body.dark-mode #resetTimerBtn{
   border:1px solid #6B4C34 !important;
   -webkit-text-fill-color:#F2E8D8 !important;
 }
+#resetTimerBtn{
+  min-width:120px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+#resetTimerBtn span{
+  color:#2C2416 !important;
+  -webkit-text-fill-color:#2C2416 !important;
+  opacity:1 !important;
+  display:inline !important;
+  visibility:visible !important;
+}
+body.dark-mode #resetTimerBtn span{
+  color:#F2E8D8 !important;
+  -webkit-text-fill-color:#F2E8D8 !important;
+}
 
 button.icon{width:40px; height:40px; padding:0; border-radius:12px; display:inline-grid; place-items:center}
 input,textarea,select{
@@ -399,7 +416,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:16px 0}
         <div class="row wrap">
           <button type="button" id="startTimerBtn">Start</button>
           <button type="button" id="pauseTimerBtn" class="soft">Pause</button>
-          <button type="button" id="resetTimerBtn" class="soft" style="background:#F0E0CC;color:#2C2416;border:1px solid #C9B79E;font-weight:700;-webkit-text-fill-color:#2C2416;">Reset</button>
+          <button type="button" id="resetTimerBtn" class="soft" style="background:#F0E0CC;color:#2C2416;border:1px solid #C9B79E;font-weight:700;-webkit-text-fill-color:#2C2416;"><span>Reset</span></button>
         </div>
       </div>
       <div class="card">
